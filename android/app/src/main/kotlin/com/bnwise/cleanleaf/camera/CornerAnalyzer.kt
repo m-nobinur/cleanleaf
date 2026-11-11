@@ -1,5 +1,6 @@
 package com.bnwise.cleanleaf.camera
 
+import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.bnwise.cleanleaf.vision.ClVision
@@ -10,6 +11,7 @@ class CornerAnalyzer(
 ) : ImageAnalysis.Analyzer {
     private val out = FloatArray(9)
     private val stability = StabilityTracker()
+    private var loggedStatus = false
 
     override fun analyze(image: ImageProxy) {
         onFrame(image.use(::detect))
@@ -30,6 +32,10 @@ class CornerAnalyzer(
                 image.imageInfo.rotationDegrees,
                 out,
             )
+        if (!loggedStatus) {
+            Log.i(TAG, "first frame ${image.width}x${image.height} detect status $status")
+            loggedStatus = true
+        }
         // Every other status (no page, detector not built yet, error) is reported as "no page" for this frame.
         val corners = if (status == CLV_OK) out.copyOf(8) else null
         val timestampUs = image.imageInfo.timestamp / 1000
@@ -43,5 +49,6 @@ class CornerAnalyzer(
 
     private companion object {
         const val CLV_OK = 0
+        const val TAG = "CornerAnalyzer"
     }
 }

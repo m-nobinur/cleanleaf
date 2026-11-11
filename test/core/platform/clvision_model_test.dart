@@ -67,6 +67,23 @@ void main() {
     }
   });
 
+  test('fp16 inference changes the heatmaps but not the corners', () {
+    final fp32 = _run(_parityInput('doc'));
+    expect(clvModelSetFp16(1), 1);
+    addTearDown(() => expect(clvModelSetFp16(0), 0));
+    final fp16 = _run(_parityInput('doc'));
+    expect(
+      fp16,
+      isNot(orderedEquals(fp32)),
+      reason: 'FORCE_FP16 had no effect',
+    );
+    final peaks32 = heatmapPeaks(fp32), peaks16 = heatmapPeaks(fp16);
+    for (var k = 0; k < 4; k++) {
+      expect(peaks16[k], closeTo(peaks32[k], 0.01), reason: 'peak $k');
+      expect(_argmax(fp16, k), _argmax(fp32, k), reason: 'corner $k');
+    }
+  });
+
   test('finds no page on the parity no-document frame', () {
     final peaks = heatmapPeaks(_run(_parityInput('nodoc')));
     expect(peaks.reduce((a, b) => a < b ? a : b), lessThan(0.3));
