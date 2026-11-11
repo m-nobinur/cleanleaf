@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -25,14 +26,24 @@ import 'features/ocr/domain/ocr_language.dart';
 // `CLBENCH DONE`, then pull `ocr/out/` (renders and recognized text).
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // A drawn frame keeps the activity visibly in the foreground during the run.
+  runApp(
+    const Center(
+      child: Text('OCR bench running', textDirection: TextDirection.ltr),
+    ),
+  );
+  final heartbeat = Timer.periodic(
+    const Duration(seconds: 5),
+    (_) => _log('heartbeat rss=${ProcessInfo.currentRss >> 20} MB'),
+  );
   try {
     await _run();
   } catch (e, stack) {
     debugPrint('CLBENCH FAILED $e\n$stack');
   } finally {
+    heartbeat.cancel();
     debugPrint('CLBENCH DONE');
   }
-  runApp(const SizedBox.shrink());
 }
 
 void _log(String line) => debugPrint('CLBENCH $line');
@@ -77,6 +88,7 @@ Future<void> _run() async {
         in (page['languages']! as List<Object?>).cast<String>()) {
       // The repeat at full size is warm; the first includes engine init.
       for (final (run, maxLongSide) in [0, 2000, 0].indexed) {
+        _log('step ocr $name lang=$language max=$maxLongSide run=$run start');
         watch.reset();
         final result = await api.recognize(
           'tesseract',
@@ -100,8 +112,11 @@ Future<void> _run() async {
       }
     }
   }
+  _log('step cancel start');
   await _cancelLatency(api, renders.last);
+  _log('step queue start');
   await _queueEndToEnd(renders.first);
+  _log('step search start');
   await _searchTiming();
 }
 
