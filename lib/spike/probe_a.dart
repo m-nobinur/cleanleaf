@@ -22,11 +22,12 @@ class PluginProbeCamera implements ProbeCamera {
       imageFormatGroup: ImageFormatGroup.yuv420,
     );
     await _controller.initialize();
+    final size = _controller.value.previewSize;
     return {
       'camera': back.name,
       'sensorOrientation': back.sensorOrientation,
       'preset': preset.name,
-      'previewSize': _controller.value.previewSize.toString(),
+      'previewSize': '${size?.width.toInt()}x${size?.height.toInt()}',
     };
   }
 

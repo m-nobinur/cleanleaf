@@ -192,6 +192,7 @@ class Bench {
 
   Future<void> run() async {
     SchedulerBinding.instance.addTimingsCallback(frameTimings.addAll);
+    AppLifecycleListener(onStateChange: (s) => log('LIFECYCLE ${s.name}'));
     log('START device=${Platform.operatingSystemVersion}');
     final sw = Stopwatch()..start();
     final info = await camera.open();
