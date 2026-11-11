@@ -80,6 +80,18 @@ const thirdPartyNotices = <ThirdPartyNotice>[
     assets: ['assets/licenses/AndroidX-NOTICE.txt', _apache],
   ),
   ThirdPartyNotice(
+    packages: ['Tesseract OCR, Tesseract4Android and trained data'],
+    assets: ['assets/licenses/Tesseract-NOTICE.txt', _apache],
+  ),
+  ThirdPartyNotice(
+    packages: ['Leptonica'],
+    assets: ['assets/licenses/Leptonica-LICENSE.txt'],
+  ),
+  ThirdPartyNotice(
+    packages: ['libjpeg 9f (Independent JPEG Group)'],
+    assets: ['assets/licenses/libjpeg-9f-README.ijg'],
+  ),
+  ThirdPartyNotice(
     packages: ['JetBrains Mono'],
     assets: ['assets/licenses/JetBrainsMono-OFL.txt'],
   ),

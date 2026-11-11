@@ -57,6 +57,10 @@ class DriftPageRepository implements PageRepository {
     try {
       return await _db.transaction(() async {
         final count = await _countPages(documentId);
+        // Google's scans are final when added; ours are read once rendered.
+        final ocrStatus = source == PageSource.googleScanner
+            ? OcrStatus.pending
+            : null;
         final page = DocumentPage(
           id,
           documentId: documentId,
@@ -65,6 +69,7 @@ class DriftPageRepository implements PageRepository {
           corners: corners,
           detectedCorners: detectedCorners,
           source: source,
+          ocrStatus: ocrStatus,
         );
         await _db
             .into(_db.pages)
@@ -85,6 +90,7 @@ class DriftPageRepository implements PageRepository {
                 rotation: page.rotation,
                 filter: page.filter.name,
                 filterParams: encodeFilterParams(page.filterParams),
+                ocrStatus: Value.absentIfNull(ocrStatus?.name),
               ),
             );
         await _touch(documentId);
@@ -133,6 +139,10 @@ class DriftPageRepository implements PageRepository {
       PagesCompanion(
         renderPath: Value(renderPath),
         thumbPath: Value(thumbPath),
+        // A new render invalidates the text and its word boxes.
+        ocrStatus: Value(OcrStatus.pending.name),
+        ocrText: const Value(null),
+        ocrLines: const Value(null),
       ),
     );
   }
