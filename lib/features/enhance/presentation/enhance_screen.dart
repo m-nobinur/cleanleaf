@@ -49,34 +49,28 @@ class EnhanceScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Dark (ink) in both app themes, like the crop editor.
-    return ShadTheme(
-      data: AppTheme.dark,
-      child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.light,
-        child: Builder(
-          builder: (context) {
-            final theme = ShadTheme.of(context);
-            final pageAsync = ref.watch(enhancePageProvider(pageId));
-            return Scaffold(
-              backgroundColor: theme.colorScheme.background,
-              body: DefaultTextStyle.merge(
-                style: TextStyle(color: theme.colorScheme.foreground),
-                child: SafeArea(
-                  child: pageAsync.when(
-                    data: (page) => _Enhance(page: page),
-                    error: (_, _) => Center(
-                      child: Text(
-                        "Couldn't open this page.",
-                        style: theme.textTheme.muted,
-                      ),
-                    ),
-                    loading: () => const SizedBox.shrink(),
-                  ),
+    final theme = ShadTheme.of(context);
+    final pageAsync = ref.watch(enhancePageProvider(pageId));
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: theme.brightness == Brightness.dark
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: theme.colorScheme.background,
+        body: DefaultTextStyle.merge(
+          style: TextStyle(color: theme.colorScheme.foreground),
+          child: SafeArea(
+            child: pageAsync.when(
+              data: (page) => _Enhance(page: page),
+              error: (_, _) => Center(
+                child: Text(
+                  "Couldn't open this page.",
+                  style: theme.textTheme.muted,
                 ),
               ),
-            );
-          },
+              loading: () => const SizedBox.shrink(),
+            ),
+          ),
         ),
       ),
     );
@@ -312,8 +306,22 @@ class _EnhanceState extends ConsumerState<_Enhance> {
             onLongPressStart: (_) => setState(() => _comparing = true),
             onLongPressEnd: (_) => setState(() => _comparing = false),
             onLongPressCancel: () => setState(() => _comparing = false),
-            child: Padding(
-              padding: const EdgeInsets.all(Spacing.lg),
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(
+                Spacing.lg,
+                Spacing.sm,
+                Spacing.lg,
+                0,
+              ),
+              padding: const EdgeInsets.all(Spacing.md),
+              decoration: BoxDecoration(
+                // A neutral canvas so a white page keeps its edge in light mode.
+                color: theme.brightness == Brightness.light
+                    ? theme.colorScheme.muted
+                    : theme.colorScheme.card,
+                borderRadius: BorderRadius.circular(Radii.md),
+                border: Border.all(color: theme.colorScheme.hairline),
+              ),
               child: _Preview(
                 future: _comparing
                     ? _render(shown, _previewLongSide, adjusted: false)
@@ -324,6 +332,7 @@ class _EnhanceState extends ConsumerState<_Enhance> {
             ),
           ),
         ),
+        const SizedBox(height: Spacing.sm),
         Text(
           _comparing ? 'Original' : 'Hold the page to compare',
           textAlign: TextAlign.center,
@@ -429,7 +438,10 @@ class _ModeSwitch extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.nav,
         borderRadius: BorderRadius.circular(Radii.full),
-        border: Border.all(color: colors.hairline),
+        // The ink pill needs an edge only against the dark background.
+        border: theme.brightness == Brightness.dark
+            ? Border.all(color: colors.hairline)
+            : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

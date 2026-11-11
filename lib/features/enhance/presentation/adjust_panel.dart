@@ -324,15 +324,16 @@ class _ToolButton extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: selected ? colors.navSelected : colors.card,
+                  // Ink on light, mist on dark: the strongest mark either way.
+                  color: selected ? colors.foreground : colors.card,
                   border: Border.all(
-                    color: selected ? colors.navSelected : colors.hairline,
+                    color: selected ? colors.foreground : colors.hairline,
                   ),
                 ),
                 child: Icon(
                   icon,
                   size: 22,
-                  color: selected ? colors.onNavSelected : colors.foreground,
+                  color: selected ? colors.background : colors.foreground,
                 ),
               ),
               if (changed)

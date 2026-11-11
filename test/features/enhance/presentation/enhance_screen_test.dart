@@ -81,6 +81,7 @@ Future<({FakeRenderer renderer, FakePageRepository repo})> pumpEnhance(
   WidgetTester tester, {
   bool afterEditor = false,
   Map<String, double> filterParams = const {},
+  ThemeMode themeMode = ThemeMode.light,
 }) async {
   tester.view.physicalSize = const Size(400, 800);
   tester.view.devicePixelRatio = 1;
@@ -135,6 +136,7 @@ Future<({FakeRenderer renderer, FakePageRepository repo})> pumpEnhance(
       child: ShadApp.router(
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
+        themeMode: themeMode,
         routerConfig: router,
       ),
     ),
@@ -229,6 +231,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(repo.edited!.rotation, 90);
   });
+
+  for (final (mode, theme) in [
+    (ThemeMode.light, AppTheme.light),
+    (ThemeMode.dark, AppTheme.dark),
+  ]) {
+    testWidgets('follows the app theme: ${mode.name}', (tester) async {
+      await pumpEnhance(tester, themeMode: mode);
+      final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+      expect(scaffold.backgroundColor, theme.colorScheme.background);
+    });
+  }
 
   group('Adjust', () {
     Future<void> openAdjust(WidgetTester tester) async {
