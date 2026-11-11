@@ -200,6 +200,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
       if (!mounted) return;
       await _cover(() => context.push(AppRoutes.confirm(page.id)));
     } on Object {
+      _autoCapture.markShot(null);
       if (!mounted) return;
       ShadToaster.of(context).show(
         const ShadToast.destructive(title: Text("Couldn't take the photo")),

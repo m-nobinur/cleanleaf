@@ -166,6 +166,7 @@ class _ConfirmScreenState extends ConsumerState<ConfirmScreen> {
         excludeSemantics: true,
         onTap: _edit,
         child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: _edit,
           child: CornerBrackets(
             color: theme.colorScheme.primary,
