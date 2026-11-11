@@ -17,13 +17,14 @@ Java_com_bnwise_cleanleaf_detection_Affinity_pin(JNIEnv *env, jobject thiz, jint
   return sched_setaffinity(0, sizeof(set), &set) == 0 ? 0 : errno;
 }
 
-// LiteRT C API, resolved from the already loaded libtensorflowlite_jni.so (the
-// AAR ships no xnnpack_delegate.h; its options struct starts with num_threads,
-// flags and is returned by value through a caller buffer, so a larger buffer is safe).
+// LiteRT C API, resolved from the already loaded libtensorflowlite_jni.so. The AAR ships
+// no xnnpack_delegate.h; this prefix matches TfLiteXNNPackDelegateOptions in LiteRT v1.4.1
+// and main, and the oversized tail absorbs the rest (returned by value via a caller buffer).
 typedef struct {
   int32_t num_threads;
+  uint32_t runtime_flags;
   uint32_t flags;
-  unsigned char rest[504];
+  unsigned char rest[500];
 } XnnOptions;
 
 static void *(*model_create)(const void *, size_t);
@@ -81,7 +82,8 @@ static int resolve(void) {
 // Returns a handle, or a negative error code.
 JNIEXPORT jlong JNICALL
 Java_com_bnwise_cleanleaf_detection_NativeBench_create(JNIEnv *env, jobject thiz, jobject model,
-                                                       jint threads, jboolean explicit_xnnpack) {
+                                                       jint threads, jboolean explicit_xnnpack,
+                                                       jint extra_flags) {
   int rc = resolve();
   if (rc) return rc;
   Bench *b = calloc(1, sizeof(Bench));
@@ -93,6 +95,7 @@ Java_com_bnwise_cleanleaf_detection_NativeBench_create(JNIEnv *env, jobject thiz
   if (explicit_xnnpack) {
     XnnOptions o = xnn_defaults();
     o.num_threads = threads;
+    o.flags |= (uint32_t)extra_flags;
     b->xnn = xnn_create(&o);
     if (!b->xnn) return -11;
     options_add_delegate(b->options, b->xnn);

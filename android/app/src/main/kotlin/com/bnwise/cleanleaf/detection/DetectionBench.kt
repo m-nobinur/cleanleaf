@@ -31,7 +31,7 @@ object NativeBench {
         System.loadLibrary("clbench")
     }
 
-    external fun create(model: ByteBuffer, threads: Int, explicitXnnpack: Boolean): Long
+    external fun create(model: ByteBuffer, threads: Int, explicitXnnpack: Boolean, flags: Int): Long
 
     external fun run(handle: Long, input: ByteBuffer, output: ByteBuffer): Int
 
@@ -47,25 +47,26 @@ private const val PAD_ZERO = "lc100_fp16_padzero.tflite"
 
 private enum class Api { JAVA, C_API, C_XNNPACK }
 
-private data class Config(val name: String, val api: Api, val threads: Int, val mask: Int = 0, val runs: Int = 30)
+private const val XNNPACK_FORCE_FP16 = 0x4
+
+private data class Config(
+    val name: String,
+    val api: Api,
+    val threads: Int,
+    val mask: Int = 0,
+    val fp16: Boolean = false,
+    val runs: Int = 30,
+)
 
 // One step per process: XNNPACK's thread pool may be fixed by the first interpreter a process creates.
 private val steps: List<Config?> = listOf(
-    null, // parity, pre- and post-processing timing
-    Config("java_a55_t1", Api.JAVA, 1, A55),
-    Config("java_a55_t4", Api.JAVA, 4, A55),
-    Config("java_all_t4", Api.JAVA, 4),
-    Config("capi_a55_t4", Api.C_API, 4, A55),
-    Config("xnn_all_t1", Api.C_XNNPACK, 1),
-    Config("xnn_all_t2", Api.C_XNNPACK, 2),
-    Config("xnn_all_t4", Api.C_XNNPACK, 4),
-    Config("xnn_a55_t1", Api.C_XNNPACK, 1, A55),
-    Config("xnn_a55_t2", Api.C_XNNPACK, 2, A55),
     Config("xnn_a55_t4", Api.C_XNNPACK, 4, A55),
-    Config("xnn_a55_t6", Api.C_XNNPACK, 6, A55),
-    Config("xnn_a76_t2", Api.C_XNNPACK, 2, A76),
+    Config("xnn_a55_t1_fp16", Api.C_XNNPACK, 1, A55, fp16 = true),
+    Config("xnn_a55_t2_fp16", Api.C_XNNPACK, 2, A55, fp16 = true),
+    Config("xnn_a55_t4_fp16", Api.C_XNNPACK, 4, A55, fp16 = true),
+    Config("xnn_a55_t6_fp16", Api.C_XNNPACK, 6, A55, fp16 = true),
+    Config("xnn_all_t4_fp16", Api.C_XNNPACK, 4, fp16 = true),
     Config("xnn_a55_t4_again", Api.C_XNNPACK, 4, A55),
-    Config("java_a55_t1_again", Api.JAVA, 1, A55),
 )
 
 private class Detection(val peaks: FloatArray, val corners: FloatArray?)
@@ -86,9 +87,9 @@ private class JavaEngine(model: ByteBuffer, threads: Int) : Engine {
     override fun close() = interpreter.close()
 }
 
-private class NativeEngine(model: ByteBuffer, threads: Int, explicitXnnpack: Boolean) : Engine {
+private class NativeEngine(model: ByteBuffer, threads: Int, explicitXnnpack: Boolean, flags: Int = 0) : Engine {
     // Heap pointers are tagged on arm64 Android (negative as Long); errors are -1..-20.
-    private val handle = NativeBench.create(model, threads, explicitXnnpack).also {
+    private val handle = NativeBench.create(model, threads, explicitXnnpack, flags).also {
         check(it !in -20L..0L) { "native create failed: $it" }
     }
 
@@ -164,7 +165,7 @@ class DetectionBench(private val context: Context) {
         val engine = when (cfg.api) {
             Api.JAVA -> JavaEngine(model, cfg.threads)
             Api.C_API -> NativeEngine(model, cfg.threads, explicitXnnpack = false)
-            Api.C_XNNPACK -> NativeEngine(model, cfg.threads, explicitXnnpack = true)
+            Api.C_XNNPACK -> NativeEngine(model, cfg.threads, true, if (cfg.fp16) XNNPACK_FORCE_FP16 else 0)
         }
         val createMs = ms(t0)
         val t1 = System.nanoTime()
@@ -177,7 +178,7 @@ class DetectionBench(private val context: Context) {
             engine.infer(input, output)
             wall[i] = ms(s)
         }
-        val peaks = postprocess(output, IN, IN).peaks
+        val detection = postprocess(output, IN, IN)
         val spawned = (threadIds() - before).sorted().map(::describe)
         engine.close()
         log(
@@ -186,7 +187,9 @@ class DetectionBench(private val context: Context) {
                 "create_ms=${f(createMs)} first_ms=${f(firstMs)} n=${cfg.runs} " +
                 "p50=${f(pct(wall, 50))} p90=${f(pct(wall, 90))} mean=${f(wall.average())} " +
                 "min=${f(wall.min())} max=${f(wall.max())} " +
-                "peaks=${peaks.joinToString(",") { f(it.toDouble(), 3) }} thermal=${thermal()} pauses=$pauses",
+                "fp16=${cfg.fp16} peaks=${detection.peaks.joinToString(",") { f(it.toDouble(), 4) }} " +
+                "corners_256=${detection.corners?.joinToString(",") { f(it.toDouble(), 2) } ?: "none"} " +
+                "thermal=${thermal()} pauses=$pauses",
         )
         log("threads cfg=${cfg.name} self=${describe(Process.myTid())} spawned=${spawned.size} ${spawned.joinToString(" ")}")
     }
