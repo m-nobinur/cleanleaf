@@ -111,6 +111,32 @@ CLV_API int32_t clv_model_run(const float* input, float* heatmaps_out);
 // clv_status.
 CLV_API int32_t clv_model_set_fp16(int32_t enabled);
 
+// QR and barcode reading (decisions.md D-47), with zxing-cpp.
+enum { CLV_NO_CODE = 2 };
+
+// Code families to look for; or them together.
+typedef enum clv_code_formats {
+  CLV_CODES_MATRIX = 1,  // QR, Micro QR, rMQR, Data Matrix, Aztec, PDF417, MaxiCode
+  CLV_CODES_LINEAR = 2,  // EAN/UPC, Code 128, Code 39, Code 93, ITF, Codabar, DataBar
+} clv_code_formats;
+
+#define CLV_CODE_FORMAT_SIZE 32
+
+typedef struct clv_code {
+  char format[CLV_CODE_FORMAT_SIZE];  // NUL-terminated name, e.g. "QR Code", "EAN-13"
+  uint8_t* text;                      // UTF-8, not NUL-terminated; release with clv_free
+  int32_t text_length;
+} clv_code;
+
+// Reads the first code in a frame's luma plane (u and v are unused). Returns CLV_OK and fills
+// code_out, or CLV_NO_CODE.
+CLV_API int32_t clv_decode_frame_codes(const clv_yuv_frame* frame, int32_t formats,
+                                       clv_code* code_out);
+
+// Reads the first code in an encoded still (JPEG or PNG), as clv_decode_frame_codes.
+CLV_API int32_t clv_decode_image_codes(const uint8_t* encoded, int32_t length, int32_t formats,
+                                       clv_code* code_out);
+
 #ifdef __cplusplus
 }
 #endif

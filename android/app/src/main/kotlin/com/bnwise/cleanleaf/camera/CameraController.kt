@@ -42,6 +42,9 @@ class CameraController(
     private var generation = 0
     private var session: Session? = null
 
+    /** `clv_code_formats` bits the analyzer reads instead of detecting pages; 0 detects pages. */
+    @Volatile var codeFormats = 0
+
     private class Session(
         val owner: LifecycleOwner,
         val provider: ProcessCameraProvider,
@@ -163,7 +166,7 @@ class CameraController(
             ).setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .setTargetRotation(Surface.ROTATION_0)
             .build()
-            .apply { setAnalyzer(analysisExecutor, CornerAnalyzer { frame -> deliver(generation, frame) }) }
+            .apply { setAnalyzer(analysisExecutor, CornerAnalyzer({ codeFormats }) { frame -> deliver(generation, frame) }) }
 
     private fun captureUseCase() =
         ImageCapture

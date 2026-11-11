@@ -18,6 +18,7 @@ import 'core/router/app_routes.dart';
 import 'features/capture/data/capture_providers.dart';
 import 'features/capture/data/pigeon_document_camera.dart';
 import 'features/capture/domain/document_camera.dart';
+import 'features/capture/domain/scan_mode.dart';
 import 'features/capture/presentation/auto_capture_setting.dart';
 import 'features/editor/presentation/editor_providers.dart';
 import 'features/gallery_import/data/detect_still_quad.dart';
@@ -214,6 +215,15 @@ class _ProbeCamera implements DocumentCamera {
 
   @override
   Future<bool> focusAt(Point point) => _inner.focusAt(point);
+
+  @override
+  Future<void> readCodes(CodeFamily? family) => _inner.readCodes(family);
+
+  @override
+  Stream<ScannedCode> get codes => _inner.codes;
+
+  @override
+  Future<bool> openLink(Uri link) => _inner.openLink(link);
 }
 
 class _Script {
