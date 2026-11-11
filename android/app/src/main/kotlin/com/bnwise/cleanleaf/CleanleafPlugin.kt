@@ -3,8 +3,6 @@ package com.bnwise.cleanleaf
 import com.bnwise.cleanleaf.camera.CameraHost
 import com.bnwise.cleanleaf.camera.CameraHostApi
 import com.bnwise.cleanleaf.camera.CornerFramesStreamHandler
-import com.bnwise.cleanleaf.mlkit.GoogleScannerHost
-import com.bnwise.cleanleaf.mlkit.GoogleScannerHostApi
 import com.bnwise.cleanleaf.vision.VisionHost
 import com.bnwise.cleanleaf.vision.VisionHostApi
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -16,7 +14,6 @@ class CleanleafPlugin :
     FlutterPlugin,
     ActivityAware {
     private var camera: CameraHost? = null
-    private var googleScanner: GoogleScannerHost? = null
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         val messenger = binding.binaryMessenger
@@ -25,35 +22,28 @@ class CleanleafPlugin :
         CameraHostApi.setUp(messenger, camera)
         CornerFramesStreamHandler.register(messenger, camera.cornerFrames)
         VisionHostApi.setUp(messenger, VisionHost())
-        googleScanner = GoogleScannerHost(binding.applicationContext).also { GoogleScannerHostApi.setUp(messenger, it) }
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         val messenger = binding.binaryMessenger
         CameraHostApi.setUp(messenger, null)
         VisionHostApi.setUp(messenger, null)
-        GoogleScannerHostApi.setUp(messenger, null)
         camera = null
-        googleScanner = null
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         camera?.attach(binding)
-        googleScanner?.attach(binding)
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
         camera?.detach()
-        googleScanner?.detach()
     }
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
         camera?.attach(binding)
-        googleScanner?.attach(binding)
     }
 
     override fun onDetachedFromActivity() {
         camera?.detach()
-        googleScanner?.detach()
     }
 }

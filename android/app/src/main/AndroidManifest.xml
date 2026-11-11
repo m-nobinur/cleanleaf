@@ -29,18 +29,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- ML Kit initializes lazily on the first Google scan (decisions.md D-02a). -->
-        <provider
-            android:name="com.google.mlkit.common.internal.MlKitInitProvider"
-            android:authorities="${applicationId}.mlkitinitprovider"
-            tools:node="remove" />
-        <!-- No telemetry backend: ML Kit events are dropped before they are stored or uploaded,
-             so nothing needs INTERNET or ACCESS_NETWORK_STATE in our process. -->
-        <service android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery">
-            <meta-data
-                android:name="backend:com.google.android.datatransport.cct.CctBackendFactory"
-                tools:node="remove" />
-        </service>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
