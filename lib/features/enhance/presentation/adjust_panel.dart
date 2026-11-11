@@ -10,7 +10,7 @@ const _icons = {
   Adjustment.brightness: LucideIcons.sun,
   Adjustment.contrast: LucideIcons.contrast,
   Adjustment.saturation: LucideIcons.droplet,
-  Adjustment.sharpness: LucideIcons.focus,
+  Adjustment.sharpness: LucideIcons.aperture,
   Adjustment.straighten: LucideIcons.ruler,
 };
 
