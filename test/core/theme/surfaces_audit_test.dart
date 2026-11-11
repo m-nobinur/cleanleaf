@@ -167,6 +167,15 @@ void main() {
         await pumpApp(tester, theme);
         await tap(tester, find.bySemanticsLabel('Files'));
         await audit(tester, '${mode}_files_grid');
+        // The last card scrolls fully clear of the floating bar.
+        await tester.drag(find.byType(GridView), const Offset(0, -2000));
+        await tester.pumpAndSettle();
+        final barTop = tester.getTopLeft(find.bySemanticsLabel('Home')).dy;
+        final last = find.ancestor(
+          of: find.text('Receipt — hardware store'),
+          matching: find.byType(DocumentCard),
+        );
+        expect(tester.getBottomLeft(last).dy, lessThan(barTop));
         await tap(tester, find.bySemanticsLabel('Switch to list view'));
         await audit(tester, '${mode}_files_list');
       });
@@ -193,6 +202,14 @@ void main() {
         await audit(tester, '${mode}_settings_sheet');
         await tap(tester, find.text('Scanner engine'));
         await audit(tester, '${mode}_engine_dialog');
+        // Closing the dialog returns to the settings sheet.
+        await tap(tester, find.bySemanticsLabel('Close').last);
+        expect(find.text('Scanner engine'), findsOneWidget);
+        expect(find.text('About & licenses'), findsOneWidget);
+        expect(
+          find.text('On this device, fully private. Default.'),
+          findsNothing,
+        );
       });
 
       testWidgets('about sheet', (tester) async {
