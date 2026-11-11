@@ -1,7 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
+import '../widgets/modal_close_button.dart';
 import 'radii.dart';
+import 'spacing.dart';
 
 /// Brand palette: ink, mist, leaf (primary actions), ember (sparing highlights).
 abstract final class Brand {
@@ -13,6 +15,9 @@ abstract final class Brand {
 
 extension BrandColors on ShadColorScheme {
   Color get highlight => custom['highlight']!;
+
+  /// Leaf for small text and icons: brand leaf misses 4.5:1 on cards.
+  Color get leafText => custom['leafText']!;
   Color get hairline => custom['hairline']!;
   Color get badge => custom['badge']!;
   Color get tileLeaf => custom['tileLeaf']!;
@@ -39,6 +44,7 @@ extension BrandColors on ShadColorScheme {
 /// Named v2 text styles; colour comes from the surrounding DefaultTextStyle.
 extension AppText on ShadTextTheme {
   TextStyle get greeting => _geist(36, -0.015, height: 1.08);
+  TextStyle get sheetTitle => _geist(24, -0.015, height: 1.2);
   TextStyle get tileTitle => _geist(20, -0.01);
   TextStyle get caption =>
       p.copyWith(fontSize: 13, fontWeight: FontWeight.w400, height: 1.3);
@@ -93,6 +99,7 @@ abstract final class AppTheme {
       selection: Color(0x330A8A5A),
       custom: {
         'highlight': Brand.ember,
+        'leafText': Color(0xFF087A50),
         'hairline': Color(0xFFDEDEDE),
         'badge': Color(0xFFFFFFFF),
         'tileLeaf': Color(0xFFDDEFE6),
@@ -145,6 +152,7 @@ abstract final class AppTheme {
       selection: Color(0x550A8A5A),
       custom: {
         'highlight': Brand.ember,
+        'leafText': Color(0xFF4ED69B),
         'hairline': Color(0xFF272B27),
         'badge': Color(0xFF1D201D),
         'tileLeaf': Color(0xFF0B1F16),
@@ -171,19 +179,100 @@ abstract final class AppTheme {
   );
 
   static ShadThemeData _theme(Brightness brightness, ShadColorScheme colors) {
-    final base = ShadTextTheme();
-    TextStyle mono(TextStyle s, FontWeight w) =>
-        s.copyWith(fontFamily: monoFamily, fontWeight: w, letterSpacing: -0.5);
+    final text = ShadTextTheme();
+    const sheetRadius = BorderRadius.vertical(top: Radius.circular(Radii.lg));
+    const modalRadius = BorderRadius.all(Radius.circular(Radii.lg));
+    const toastRadius = BorderRadius.all(Radius.circular(Radii.md));
+    final toastTitle = text.small.copyWith(fontWeight: FontWeight.w500);
+    // Phones sit below shadcn's sm breakpoint, which centres titles and
+    // squares off corners unless told otherwise.
     return ShadThemeData(
       brightness: brightness,
       colorScheme: colors,
       radius: _radius,
-      textTheme: base.copyWith(
-        h1Large: mono(base.h1Large, FontWeight.w600),
-        h1: mono(base.h1, FontWeight.w600),
-        h2: mono(base.h2, FontWeight.w500),
-        h3: mono(base.h3, FontWeight.w500),
-        h4: mono(base.h4, FontWeight.w500),
+      // shadcn's muted style has no colour, so radio sublabels and other
+      // DefaultTextStyle users rendered it invisible in light mode.
+      textTheme: text.copyWith(
+        muted: text.muted.copyWith(color: colors.mutedForeground),
+      ),
+      // 48 dp touch targets throughout (design.md, Android guideline).
+      buttonSizesTheme: const ShadButtonSizesTheme(
+        regular: ShadButtonSizeTheme(
+          height: 48,
+          padding: EdgeInsets.symmetric(horizontal: 20),
+        ),
+        lg: ShadButtonSizeTheme(
+          height: 48,
+          padding: EdgeInsets.symmetric(horizontal: 32),
+        ),
+        icon: ShadButtonSizeTheme(
+          height: 48,
+          width: 48,
+          padding: EdgeInsets.zero,
+        ),
+      ),
+      inputTheme: const ShadInputTheme(
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      ),
+      sheetTheme: const ShadSheetTheme(
+        radius: sheetRadius,
+        closeIcon: ModalCloseButton(),
+        closeIconPosition: modalClosePosition,
+        removeBorderRadiusWhenTiny: false,
+        titleTextAlign: TextAlign.start,
+        descriptionTextAlign: TextAlign.start,
+      ),
+      primaryDialogTheme: ShadDialogTheme(
+        radius: modalRadius,
+        removeBorderRadiusWhenTiny: false,
+        backgroundColor: colors.card,
+        border: Border.all(color: colors.custom['hairline']!),
+        titleStyle: text.sheetTitle.copyWith(color: colors.foreground),
+        descriptionStyle: text.muted.copyWith(color: colors.mutedForeground),
+        titleTextAlign: TextAlign.start,
+        descriptionTextAlign: TextAlign.start,
+        gap: Spacing.sm,
+        actionsGap: Spacing.sm,
+        // Leaves a margin on phones, where shadcn would go edge to edge.
+        constraints: const BoxConstraints(maxWidth: 328),
+      ),
+      // White on leaf passes AA only as large text (bold 14+ or 18+).
+      primaryButtonTheme: ShadButtonTheme(
+        textStyle: text.small.copyWith(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      // shadcn tints outline and ghost text with primary; ours stay ink.
+      outlineButtonTheme: ShadButtonTheme(
+        foregroundColor: colors.foreground,
+        pressedForegroundColor: colors.foreground,
+      ),
+      ghostButtonTheme: ShadButtonTheme(
+        foregroundColor: colors.foreground,
+        pressedForegroundColor: colors.foreground,
+      ),
+      // Toasts invert the surface so they read over any screen. They time out
+      // on their own, so they drop shadcn's 20 dp close icon.
+      primaryToastTheme: ShadToastTheme(
+        closeIcon: const SizedBox.shrink(),
+        backgroundColor: colors.custom['tileInk'],
+        titleStyle: toastTitle.copyWith(color: colors.custom['onTileInk']),
+        descriptionStyle: text.muted.copyWith(
+          color: colors.custom['onTileInk'],
+        ),
+        radius: toastRadius,
+        border: ShadBorder.none,
+        padding: const EdgeInsets.fromLTRB(20, 14, 14, 14),
+      ),
+      destructiveToastTheme: ShadToastTheme(
+        closeIcon: const SizedBox.shrink(),
+        // Deeper than [destructive] so white 14 sp text passes AA in dark too.
+        backgroundColor: const Color(0xFFB42318),
+        titleStyle: toastTitle.copyWith(color: colors.destructiveForeground),
+        radius: toastRadius,
+        border: ShadBorder.none,
+        padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
       ),
     );
   }

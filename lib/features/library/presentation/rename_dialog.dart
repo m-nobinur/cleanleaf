@@ -1,10 +1,13 @@
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
+import '../../../core/widgets/modal_close_button.dart';
+
 /// Resolves to the trimmed new title, or null when cancelled or unchanged.
 Future<String?> showRenameDialog(BuildContext context, String current) async {
   final title = await showShadDialog<String>(
     context: context,
+    barrierLabel: 'Dismiss',
     builder: (_) => _RenameDialog(current: current),
   );
   return title == current ? null : title;
@@ -36,7 +39,9 @@ class _RenameDialogState extends State<_RenameDialog> {
   @override
   Widget build(BuildContext context) {
     return ShadDialog(
-      title: const Text('Rename document'),
+      title: const ModalTitle('Rename document'),
+      closeIcon: const ModalCloseButton(),
+      closeIconPosition: modalClosePosition,
       actions: [
         ShadButton.outline(
           onPressed: () => Navigator.of(context).pop(),

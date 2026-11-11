@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/radii.dart';
 import '../../../core/theme/spacing.dart';
+import '../../../core/widgets/modal_close_button.dart';
 import '../domain/document_camera.dart';
 
 /// Shows a decoded code (D-47): its type and text, with Copy, Share, Open for
@@ -16,6 +17,7 @@ Future<void> showCodeResult(
   required Future<bool> Function(Uri link) openLink,
 }) => showShadSheet<void>(
   context: context,
+  barrierLabel: 'Dismiss',
   side: ShadSheetSide.bottom,
   builder: (context) => _CodeResultSheet(code: code, openLink: openLink),
 );
@@ -48,9 +50,7 @@ class _CodeResultSheet extends StatelessWidget {
     final colors = theme.colorScheme;
     final link = code.webLink;
     return ShadSheet(
-      radius: const BorderRadius.vertical(top: Radius.circular(Radii.lg)),
-      removeBorderRadiusWhenTiny: false,
-      title: Text(link != null ? 'Link' : 'Text'),
+      title: ModalTitle(link != null ? 'Link' : 'Text'),
       description: Text(
         code.format.toUpperCase(),
         style: theme.textTheme.monoMeta.copyWith(color: colors.mutedForeground),
