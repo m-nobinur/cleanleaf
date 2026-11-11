@@ -77,18 +77,7 @@ class FloatingNav extends StatelessWidget {
             pressedBackgroundColor: colors.primary,
             foregroundColor: colors.primaryForeground,
             hoverForegroundColor: colors.primaryForeground,
-            decoration: ShadDecoration(
-              shape: BoxShape.circle,
-              shadows: colors.primaryGlow.a == 0
-                  ? null
-                  : [
-                      BoxShadow(
-                        color: colors.primaryGlow,
-                        blurRadius: 28,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-            ),
+            decoration: const ShadDecoration(shape: BoxShape.circle),
             icon: const Icon(LucideIcons.plus, size: 28),
             onPressed: onQuickScan,
             onLongPress: onChooseMode,

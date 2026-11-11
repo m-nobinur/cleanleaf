@@ -30,12 +30,6 @@ extension BrandColors on ShadColorScheme {
   Color get tileMistIcon => custom['tileMistIcon']!;
   Color get tileInkBadge => custom['tileInkBadge']!;
   Color get tileInkIcon => custom['tileInkIcon']!;
-
-  /// White wash over the top-left of tiles; transparent means flat tiles.
-  Color get tileSheen => custom['tileSheen']!;
-
-  /// Soft shadow under the primary scan button; transparent means none.
-  Color get primaryGlow => custom['primaryGlow']!;
   Color get nav => custom['nav']!;
   Color get onNav => custom['onNav']!;
   Color get navSelected => custom['navSelected']!;
@@ -116,8 +110,6 @@ abstract final class AppTheme {
         'tileMistIcon': Brand.ink,
         'tileInkBadge': Color(0xFFFFFFFF),
         'tileInkIcon': Brand.ink,
-        'tileSheen': Color(0x00000000),
-        'primaryGlow': Color(0x00000000),
         'nav': Brand.ink,
         'onNav': Brand.mist,
         'navSelected': Color(0xFFFFFFFF),
@@ -126,152 +118,56 @@ abstract final class AppTheme {
     ),
   );
 
-  // T-034: compare dark variants on device with
-  // --dart-define=CLEANLEAF_DARK_VARIANT=a|b; unset keeps the current theme.
-  static const _darkVariant = String.fromEnvironment('CLEANLEAF_DARK_VARIANT');
-
-  static final darkVariants = {
-    '': _theme(Brightness.dark, _darkCurrent),
-    'a': _theme(Brightness.dark, _darkInk),
-    'b': _theme(Brightness.dark, _darkGraphite),
-  };
-
-  static final dark = darkVariants[_darkVariant] ?? darkVariants['']!;
-
-  static ShadColorScheme _darkScheme({
-    required Color background,
-    required Color foreground,
-    required Color card,
-    required Color raised,
-    required Color mutedForeground,
-    required Color hairline,
-    required Map<String, Color> custom,
-  }) => ShadColorScheme(
-    background: background,
-    foreground: foreground,
-    card: card,
-    cardForeground: foreground,
-    popover: card,
-    popoverForeground: foreground,
-    primary: Brand.leaf,
-    primaryForeground: const Color(0xFFFFFFFF),
-    secondary: raised,
-    secondaryForeground: foreground,
-    muted: raised,
-    mutedForeground: mutedForeground,
-    accent: raised,
-    accentForeground: foreground,
-    destructive: const Color(0xFFF04438),
-    destructiveForeground: const Color(0xFFFFFFFF),
-    border: hairline,
-    input: hairline,
-    ring: Brand.leaf,
-    selection: const Color(0x550A8A5A),
-    custom: {'highlight': Brand.ember, 'hairline': hairline, ...custom},
-  );
-
-  static final _darkCurrent = _darkScheme(
-    background: Brand.ink,
-    foreground: const Color(0xFFF4F4F4),
-    card: const Color(0xFF1B1B1B),
-    raised: const Color(0xFF242424),
-    mutedForeground: const Color(0xFF9E9E9E),
-    hairline: const Color(0xFF2E2E2E),
-    custom: const {
-      'badge': Color(0xFF242424),
-      // Leaf at 18% and ember at 15% over ink, pre-blended to opaque.
-      'tileLeaf': Color(0xFF10271E),
-      'tileEmber': Color(0xFF321C13),
-      'tileMist': Color(0xFF1B1B1B),
-      'tileInk': Color(0xFFF4F4F4),
-      'onTileInk': Brand.ink,
-      'tileLeafBadge': Color(0xFF242424),
-      'tileLeafIcon': Color(0xFFF4F4F4),
-      'tileLeafEdge': Color(0x00000000),
-      'tileEmberBadge': Color(0xFF242424),
-      'tileEmberIcon': Color(0xFFF4F4F4),
-      'tileEmberEdge': Color(0x00000000),
-      'tileMistBadge': Color(0xFF242424),
-      'tileMistIcon': Color(0xFFF4F4F4),
-      'tileInkBadge': Color(0xFF242424),
-      'tileInkIcon': Color(0xFFF4F4F4),
-      'tileSheen': Color(0x00000000),
-      'primaryGlow': Color(0x00000000),
-      'nav': Color(0xFF1B1B1B),
-      'onNav': Color(0xFF9E9E9E),
-      'navSelected': Color(0xFFF4F4F4),
-      'onNavSelected': Brand.ink,
-    },
-  );
-
-  // A: near-black ink; tints stay dark but get coloured hairlines and
-  // luminous icons on tinted badges, so colour reads as light, not fill.
-  static final _darkInk = _darkScheme(
-    background: const Color(0xFF090A09),
-    foreground: const Color(0xFFF2F4F2),
-    card: const Color(0xFF141614),
-    raised: const Color(0xFF1D201D),
-    mutedForeground: const Color(0xFF9AA39C),
-    hairline: const Color(0xFF272B27),
-    custom: const {
-      'badge': Color(0xFF1D201D),
-      'tileLeaf': Color(0xFF0B1F16),
-      'tileEmber': Color(0xFF22120A),
-      'tileMist': Color(0xFF141614),
-      'tileInk': Color(0xFFEDF0EB),
-      'onTileInk': Color(0xFF0E100E),
-      'tileLeafBadge': Color(0xFF123A2A),
-      'tileLeafIcon': Color(0xFF52E0A4),
-      'tileLeafEdge': Color(0xFF1E5E42),
-      'tileEmberBadge': Color(0xFF41200F),
-      'tileEmberIcon': Color(0xFFFF9466),
-      'tileEmberEdge': Color(0xFF703519),
-      'tileMistBadge': Color(0xFF1D201D),
-      'tileMistIcon': Color(0xFFF2F4F2),
-      'tileInkBadge': Color(0xFF0E100E),
-      'tileInkIcon': Color(0xFFEDF0EB),
-      'tileSheen': Color(0x00000000),
-      'primaryGlow': Color(0x00000000),
-      'nav': Color(0xFF141614),
-      'onNav': Color(0xFF9AA39C),
-      'navSelected': Color(0xFFEDF0EB),
-      'onNavSelected': Color(0xFF0E100E),
-    },
-  );
-
-  // B: lifted graphite; saturated tile fills with a faint top sheen, the
-  // light theme's white icon badges, and a leaf glow under the scan button.
-  static final _darkGraphite = _darkScheme(
-    background: const Color(0xFF1B1C1E),
-    foreground: const Color(0xFFF5F5F4),
-    card: const Color(0xFF26272A),
-    raised: const Color(0xFF313236),
-    mutedForeground: const Color(0xFFA9ABAF),
-    hairline: const Color(0xFF37393D),
-    custom: const {
-      'badge': Color(0xFF313236),
-      'tileLeaf': Color(0xFF17513A),
-      'tileEmber': Color(0xFF5C2B17),
-      'tileMist': Color(0xFF26272A),
-      'tileInk': Color(0xFFF5F5F4),
-      'onTileInk': Brand.ink,
-      'tileLeafBadge': Color(0xFFF5F5F4),
-      'tileLeafIcon': Brand.ink,
-      'tileLeafEdge': Color(0x00000000),
-      'tileEmberBadge': Color(0xFFF5F5F4),
-      'tileEmberIcon': Brand.ink,
-      'tileEmberEdge': Color(0x00000000),
-      'tileMistBadge': Color(0xFFF5F5F4),
-      'tileMistIcon': Brand.ink,
-      'tileInkBadge': Color(0xFF1B1C1E),
-      'tileInkIcon': Color(0xFFF5F5F4),
-      'tileSheen': Color(0x14FFFFFF),
-      'primaryGlow': Color(0x8C0A8A5A),
-      'nav': Color(0xFF26272A),
-      'onNav': Color(0xFFA9ABAF),
-      'navSelected': Color(0xFFF5F5F4),
-      'onNavSelected': Brand.ink,
-    },
+  // Deep ink: tints stay dark but get coloured hairlines and luminous icons
+  // on tinted badges, so colour reads as light, not fill (T-034, variant A).
+  static final dark = _theme(
+    Brightness.dark,
+    const ShadColorScheme(
+      background: Color(0xFF090A09),
+      foreground: Color(0xFFF2F4F2),
+      card: Color(0xFF141614),
+      cardForeground: Color(0xFFF2F4F2),
+      popover: Color(0xFF141614),
+      popoverForeground: Color(0xFFF2F4F2),
+      primary: Brand.leaf,
+      primaryForeground: Color(0xFFFFFFFF),
+      secondary: Color(0xFF1D201D),
+      secondaryForeground: Color(0xFFF2F4F2),
+      muted: Color(0xFF1D201D),
+      mutedForeground: Color(0xFF9AA39C),
+      accent: Color(0xFF1D201D),
+      accentForeground: Color(0xFFF2F4F2),
+      destructive: Color(0xFFF04438),
+      destructiveForeground: Color(0xFFFFFFFF),
+      border: Color(0xFF272B27),
+      input: Color(0xFF272B27),
+      ring: Brand.leaf,
+      selection: Color(0x550A8A5A),
+      custom: {
+        'highlight': Brand.ember,
+        'hairline': Color(0xFF272B27),
+        'badge': Color(0xFF1D201D),
+        'tileLeaf': Color(0xFF0B1F16),
+        'tileEmber': Color(0xFF22120A),
+        'tileMist': Color(0xFF141614),
+        'tileInk': Color(0xFFEDF0EB),
+        'onTileInk': Color(0xFF0E100E),
+        'tileLeafBadge': Color(0xFF123A2A),
+        'tileLeafIcon': Color(0xFF52E0A4),
+        'tileLeafEdge': Color(0xFF1E5E42),
+        'tileEmberBadge': Color(0xFF41200F),
+        'tileEmberIcon': Color(0xFFFF9466),
+        'tileEmberEdge': Color(0xFF703519),
+        'tileMistBadge': Color(0xFF1D201D),
+        'tileMistIcon': Color(0xFFF2F4F2),
+        'tileInkBadge': Color(0xFF0E100E),
+        'tileInkIcon': Color(0xFFEDF0EB),
+        'nav': Color(0xFF141614),
+        'onNav': Color(0xFF9AA39C),
+        'navSelected': Color(0xFFEDF0EB),
+        'onNavSelected': Color(0xFF0E100E),
+      },
+    ),
   );
 
   static ShadThemeData _theme(Brightness brightness, ShadColorScheme colors) {

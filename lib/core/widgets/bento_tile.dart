@@ -78,7 +78,6 @@ class _BentoTileState extends State<BentoTile> {
         const Color(0x00000000),
       ),
     };
-    final sheen = colors.tileSheen;
     final enabled = widget.onTap != null;
 
     final content = Padding(
@@ -154,16 +153,6 @@ class _BentoTileState extends State<BentoTile> {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: background,
-                gradient: sheen.a == 0
-                    ? null
-                    : LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color.alphaBlend(sheen, background),
-                          background,
-                        ],
-                      ),
                 borderRadius: BorderRadius.circular(Radii.lg),
                 border: edge.a == 0 ? null : Border.all(color: edge),
               ),

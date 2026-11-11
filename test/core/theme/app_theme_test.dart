@@ -10,7 +10,7 @@ double _contrast(Color a, Color b) {
 }
 
 void main() {
-  final themes = {'light': AppTheme.light, ...AppTheme.darkVariants};
+  final themes = {'light': AppTheme.light, 'dark': AppTheme.dark};
 
   for (final MapEntry(key: name, value: theme) in themes.entries) {
     final c = theme.colorScheme;
@@ -21,7 +21,7 @@ void main() {
           c.tileMist, c.tileInk, c.onTileInk, c.tileLeafBadge,
           c.tileLeafIcon, c.tileLeafEdge, c.tileEmberBadge, c.tileEmberIcon,
           c.tileEmberEdge, c.tileMistBadge, c.tileMistIcon, c.tileInkBadge,
-          c.tileInkIcon, c.tileSheen, c.primaryGlow, c.nav, c.onNav,
+          c.tileInkIcon, c.nav, c.onNav,
           c.navSelected, c.onNavSelected,
         ],
         returnsNormally,
@@ -52,22 +52,15 @@ void main() {
     });
   }
 
-  test('dark defaults to the current scheme', () {
-    expect(AppTheme.dark, same(AppTheme.darkVariants['']));
-    expect(AppTheme.dark.brightness, Brightness.dark);
-  });
-
-  test('variant icons stay visible on their badges', () {
-    for (final theme in AppTheme.darkVariants.values) {
-      final c = theme.colorScheme;
-      for (final (icon, badge) in [
-        (c.tileLeafIcon, c.tileLeafBadge),
-        (c.tileEmberIcon, c.tileEmberBadge),
-        (c.tileMistIcon, c.tileMistBadge),
-        (c.tileInkIcon, c.tileInkBadge),
-      ]) {
-        expect(_contrast(icon, badge), greaterThanOrEqualTo(3));
-      }
+  test('dark tile icons stay visible on their badges', () {
+    final c = AppTheme.dark.colorScheme;
+    for (final (icon, badge) in [
+      (c.tileLeafIcon, c.tileLeafBadge),
+      (c.tileEmberIcon, c.tileEmberBadge),
+      (c.tileMistIcon, c.tileMistBadge),
+      (c.tileInkIcon, c.tileInkBadge),
+    ]) {
+      expect(_contrast(icon, badge), greaterThanOrEqualTo(3));
     }
   });
 }
