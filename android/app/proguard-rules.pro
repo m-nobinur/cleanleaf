@@ -7,3 +7,5 @@
 -keepnames class com.google.mlkit.** { *; }
 -keepnames class com.google.android.datatransport.** { *; }
 -keep class com.google.android.datatransport.runtime.TransportRuntime { public static void initialize(android.content.Context); }
+-keep class com.google.mlkit.common.sdkinternal.MlKitContext { public static *** initialize(android.content.Context, java.util.List); }
+-keep class * implements com.google.firebase.components.ComponentRegistrar { <init>(); }

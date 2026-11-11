@@ -2,9 +2,7 @@ package com.bnwise.cleanleaf.ocrbench
 
 import android.content.Context
 import android.graphics.BitmapFactory
-import android.util.Log
 import com.google.android.gms.tasks.Tasks
-import com.google.mlkit.common.MlKit
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
@@ -21,20 +19,21 @@ class MlKitEngine(
 
     private val recognizer = create(context.applicationContext)
 
-    private fun create(context: Context): TextRecognizer =
-        try {
-            MlKit.initialize(context)
-            TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-        } catch (e: Throwable) {
-            Log.i("CLBENCH", "mlkit getClient failed, retrying after TransportRuntime.initialize: ${e.stackTraceToString().take(4000)}")
-            // D-37 strips the telemetry backend; the transport runtime may still need initializing.
-            Class
-                .forName("com.google.android.datatransport.runtime.TransportRuntime")
-                .getMethod("initialize", Context::class.java)
-                .invoke(null, context)
-            MlKit.initialize(context)
-            TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-        }
+    // With MlKitInitProvider removed (D-37), MlKit.initialize's manifest discovery never registered the
+    // text component (getClient NPE on the KM6), so the context is built from explicit registrars.
+    private fun create(context: Context): TextRecognizer {
+        val registrars =
+            listOf(
+                "com.google.mlkit.common.internal.CommonComponentRegistrar",
+                "com.google.mlkit.vision.common.internal.VisionCommonRegistrar",
+                "com.google.mlkit.vision.text.internal.TextRegistrar",
+            ).map { Class.forName(it).getDeclaredConstructor().newInstance() }
+        Class
+            .forName("com.google.mlkit.common.sdkinternal.MlKitContext")
+            .getMethod("initialize", Context::class.java, List::class.java)
+            .invoke(null, context, registrars)
+        return TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    }
 
     override fun read(page: File): JSONObject {
         val t0 = System.nanoTime()
