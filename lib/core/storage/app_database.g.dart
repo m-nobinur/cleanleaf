@@ -436,6 +436,15 @@ class $PagesTable extends Pages with TableInfo<$PagesTable, PageRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _anchorsMeta = const VerificationMeta(
     'anchors',
   );
@@ -508,6 +517,7 @@ class $PagesTable extends Pages with TableInfo<$PagesTable, PageRow> {
     originalPath,
     corners,
     detectedCorners,
+    source,
     anchors,
     rotation,
     filter,
@@ -575,6 +585,14 @@ class $PagesTable extends Pages with TableInfo<$PagesTable, PageRow> {
           _detectedCornersMeta,
         ),
       );
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
     }
     if (data.containsKey('anchors')) {
       context.handle(
@@ -656,6 +674,10 @@ class $PagesTable extends Pages with TableInfo<$PagesTable, PageRow> {
         DriftSqlType.string,
         data['${effectivePrefix}detected_corners'],
       ),
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
       anchors: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}anchors'],
@@ -696,6 +718,7 @@ class PageRow extends DataClass implements Insertable<PageRow> {
   final String originalPath;
   final String corners;
   final String? detectedCorners;
+  final String source;
   final String anchors;
   final int rotation;
   final String filter;
@@ -709,6 +732,7 @@ class PageRow extends DataClass implements Insertable<PageRow> {
     required this.originalPath,
     required this.corners,
     this.detectedCorners,
+    required this.source,
     required this.anchors,
     required this.rotation,
     required this.filter,
@@ -727,6 +751,7 @@ class PageRow extends DataClass implements Insertable<PageRow> {
     if (!nullToAbsent || detectedCorners != null) {
       map['detected_corners'] = Variable<String>(detectedCorners);
     }
+    map['source'] = Variable<String>(source);
     map['anchors'] = Variable<String>(anchors);
     map['rotation'] = Variable<int>(rotation);
     map['filter'] = Variable<String>(filter);
@@ -750,6 +775,7 @@ class PageRow extends DataClass implements Insertable<PageRow> {
       detectedCorners: detectedCorners == null && nullToAbsent
           ? const Value.absent()
           : Value(detectedCorners),
+      source: Value(source),
       anchors: Value(anchors),
       rotation: Value(rotation),
       filter: Value(filter),
@@ -775,6 +801,7 @@ class PageRow extends DataClass implements Insertable<PageRow> {
       originalPath: serializer.fromJson<String>(json['originalPath']),
       corners: serializer.fromJson<String>(json['corners']),
       detectedCorners: serializer.fromJson<String?>(json['detectedCorners']),
+      source: serializer.fromJson<String>(json['source']),
       anchors: serializer.fromJson<String>(json['anchors']),
       rotation: serializer.fromJson<int>(json['rotation']),
       filter: serializer.fromJson<String>(json['filter']),
@@ -793,6 +820,7 @@ class PageRow extends DataClass implements Insertable<PageRow> {
       'originalPath': serializer.toJson<String>(originalPath),
       'corners': serializer.toJson<String>(corners),
       'detectedCorners': serializer.toJson<String?>(detectedCorners),
+      'source': serializer.toJson<String>(source),
       'anchors': serializer.toJson<String>(anchors),
       'rotation': serializer.toJson<int>(rotation),
       'filter': serializer.toJson<String>(filter),
@@ -809,6 +837,7 @@ class PageRow extends DataClass implements Insertable<PageRow> {
     String? originalPath,
     String? corners,
     Value<String?> detectedCorners = const Value.absent(),
+    String? source,
     String? anchors,
     int? rotation,
     String? filter,
@@ -824,6 +853,7 @@ class PageRow extends DataClass implements Insertable<PageRow> {
     detectedCorners: detectedCorners.present
         ? detectedCorners.value
         : this.detectedCorners,
+    source: source ?? this.source,
     anchors: anchors ?? this.anchors,
     rotation: rotation ?? this.rotation,
     filter: filter ?? this.filter,
@@ -845,6 +875,7 @@ class PageRow extends DataClass implements Insertable<PageRow> {
       detectedCorners: data.detectedCorners.present
           ? data.detectedCorners.value
           : this.detectedCorners,
+      source: data.source.present ? data.source.value : this.source,
       anchors: data.anchors.present ? data.anchors.value : this.anchors,
       rotation: data.rotation.present ? data.rotation.value : this.rotation,
       filter: data.filter.present ? data.filter.value : this.filter,
@@ -867,6 +898,7 @@ class PageRow extends DataClass implements Insertable<PageRow> {
           ..write('originalPath: $originalPath, ')
           ..write('corners: $corners, ')
           ..write('detectedCorners: $detectedCorners, ')
+          ..write('source: $source, ')
           ..write('anchors: $anchors, ')
           ..write('rotation: $rotation, ')
           ..write('filter: $filter, ')
@@ -885,6 +917,7 @@ class PageRow extends DataClass implements Insertable<PageRow> {
     originalPath,
     corners,
     detectedCorners,
+    source,
     anchors,
     rotation,
     filter,
@@ -902,6 +935,7 @@ class PageRow extends DataClass implements Insertable<PageRow> {
           other.originalPath == this.originalPath &&
           other.corners == this.corners &&
           other.detectedCorners == this.detectedCorners &&
+          other.source == this.source &&
           other.anchors == this.anchors &&
           other.rotation == this.rotation &&
           other.filter == this.filter &&
@@ -917,6 +951,7 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
   final Value<String> originalPath;
   final Value<String> corners;
   final Value<String?> detectedCorners;
+  final Value<String> source;
   final Value<String> anchors;
   final Value<int> rotation;
   final Value<String> filter;
@@ -931,6 +966,7 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
     this.originalPath = const Value.absent(),
     this.corners = const Value.absent(),
     this.detectedCorners = const Value.absent(),
+    this.source = const Value.absent(),
     this.anchors = const Value.absent(),
     this.rotation = const Value.absent(),
     this.filter = const Value.absent(),
@@ -946,6 +982,7 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
     required String originalPath,
     required String corners,
     this.detectedCorners = const Value.absent(),
+    required String source,
     required String anchors,
     required int rotation,
     required String filter,
@@ -958,6 +995,7 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
        pageIndex = Value(pageIndex),
        originalPath = Value(originalPath),
        corners = Value(corners),
+       source = Value(source),
        anchors = Value(anchors),
        rotation = Value(rotation),
        filter = Value(filter),
@@ -969,6 +1007,7 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
     Expression<String>? originalPath,
     Expression<String>? corners,
     Expression<String>? detectedCorners,
+    Expression<String>? source,
     Expression<String>? anchors,
     Expression<int>? rotation,
     Expression<String>? filter,
@@ -984,6 +1023,7 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
       if (originalPath != null) 'original_path': originalPath,
       if (corners != null) 'corners': corners,
       if (detectedCorners != null) 'detected_corners': detectedCorners,
+      if (source != null) 'source': source,
       if (anchors != null) 'anchors': anchors,
       if (rotation != null) 'rotation': rotation,
       if (filter != null) 'filter': filter,
@@ -1001,6 +1041,7 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
     Value<String>? originalPath,
     Value<String>? corners,
     Value<String?>? detectedCorners,
+    Value<String>? source,
     Value<String>? anchors,
     Value<int>? rotation,
     Value<String>? filter,
@@ -1016,6 +1057,7 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
       originalPath: originalPath ?? this.originalPath,
       corners: corners ?? this.corners,
       detectedCorners: detectedCorners ?? this.detectedCorners,
+      source: source ?? this.source,
       anchors: anchors ?? this.anchors,
       rotation: rotation ?? this.rotation,
       filter: filter ?? this.filter,
@@ -1046,6 +1088,9 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
     }
     if (detectedCorners.present) {
       map['detected_corners'] = Variable<String>(detectedCorners.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
     }
     if (anchors.present) {
       map['anchors'] = Variable<String>(anchors.value);
@@ -1080,6 +1125,7 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
           ..write('originalPath: $originalPath, ')
           ..write('corners: $corners, ')
           ..write('detectedCorners: $detectedCorners, ')
+          ..write('source: $source, ')
           ..write('anchors: $anchors, ')
           ..write('rotation: $rotation, ')
           ..write('filter: $filter, ')
@@ -1426,6 +1472,7 @@ typedef $$PagesTableCreateCompanionBuilder = PagesCompanion Function({
   required String originalPath,
   required String corners,
   Value<String?> detectedCorners,
+  required String source,
   required String anchors,
   required int rotation,
   required String filter,
@@ -1441,6 +1488,7 @@ typedef $$PagesTableUpdateCompanionBuilder = PagesCompanion Function({
   Value<String> originalPath,
   Value<String> corners,
   Value<String?> detectedCorners,
+  Value<String> source,
   Value<String> anchors,
   Value<int> rotation,
   Value<String> filter,
@@ -1502,6 +1550,11 @@ class $$PagesTableFilterComposer extends Composer<_$AppDatabase, $PagesTable> {
 
   ColumnFilters<String> get detectedCorners => $composableBuilder(
     column: $table.detectedCorners,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1593,6 +1646,11 @@ class $$PagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get anchors => $composableBuilder(
     column: $table.anchors,
     builder: (column) => ColumnOrderings(column),
@@ -1675,6 +1733,9 @@ class $$PagesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
   GeneratedColumn<String> get anchors =>
       $composableBuilder(column: $table.anchors, builder: (column) => column);
 
@@ -1755,6 +1816,7 @@ class $$PagesTableTableManager
                 Value<String> originalPath = const Value.absent(),
                 Value<String> corners = const Value.absent(),
                 Value<String?> detectedCorners = const Value.absent(),
+                Value<String> source = const Value.absent(),
                 Value<String> anchors = const Value.absent(),
                 Value<int> rotation = const Value.absent(),
                 Value<String> filter = const Value.absent(),
@@ -1769,6 +1831,7 @@ class $$PagesTableTableManager
                 originalPath: originalPath,
                 corners: corners,
                 detectedCorners: detectedCorners,
+                source: source,
                 anchors: anchors,
                 rotation: rotation,
                 filter: filter,
@@ -1785,6 +1848,7 @@ class $$PagesTableTableManager
                 required String originalPath,
                 required String corners,
                 Value<String?> detectedCorners = const Value.absent(),
+                required String source,
                 required String anchors,
                 required int rotation,
                 required String filter,
@@ -1799,6 +1863,7 @@ class $$PagesTableTableManager
                 originalPath: originalPath,
                 corners: corners,
                 detectedCorners: detectedCorners,
+                source: source,
                 anchors: anchors,
                 rotation: rotation,
                 filter: filter,

@@ -15,6 +15,7 @@ abstract interface class PageRepository {
     String documentId, {
     required Stream<List<int>> original,
     required Quad? detectedCorners,
+    PageSource source = PageSource.camera,
   });
 
   /// Saves the edit parameters (corners, anchors, rotation, filter, params).

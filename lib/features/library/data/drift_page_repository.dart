@@ -44,6 +44,7 @@ class DriftPageRepository implements PageRepository {
     String documentId, {
     required Stream<List<int>> original,
     required Quad? detectedCorners,
+    PageSource source = PageSource.camera,
   }) async {
     final corners = detectedCorners ?? fullFrame;
     final id = newId();
@@ -63,6 +64,7 @@ class DriftPageRepository implements PageRepository {
           originalPath: originalPath,
           corners: corners,
           detectedCorners: detectedCorners,
+          source: source,
         );
         await _db
             .into(_db.pages)
@@ -73,6 +75,7 @@ class DriftPageRepository implements PageRepository {
                 pageIndex: page.index,
                 originalPath: originalPath,
                 corners: encodeCorners(corners),
+                source: source.name,
                 detectedCorners: Value.absentIfNull(
                   detectedCorners == null
                       ? null
