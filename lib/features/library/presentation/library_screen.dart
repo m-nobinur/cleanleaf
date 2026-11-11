@@ -7,6 +7,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/spacing.dart';
+import '../../export/data/export_providers.dart';
 import '../data/library_providers.dart';
 import '../domain/document.dart';
 import '../domain/document_repository.dart';
@@ -47,6 +48,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final action = await showDocumentActions(context, document);
     if (!mounted) return;
     switch (action) {
+      case DocumentAction.share:
+        await _share(document);
       case DocumentAction.rename:
         final title = await showRenameDialog(context, document.title);
         if (title != null) await _documents.rename(document.id, title);
@@ -54,6 +57,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         _delete(document);
       case null:
         break;
+    }
+  }
+
+  Future<void> _share(Document document) async {
+    try {
+      await ref.read(shareDocumentPdfProvider)(document.id);
+    } on Object {
+      if (!mounted) return;
+      ShadToaster.of(context).show(
+        const ShadToast.destructive(title: Text('Could not export this PDF')),
+      );
     }
   }
 

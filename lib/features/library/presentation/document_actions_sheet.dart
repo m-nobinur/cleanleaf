@@ -4,7 +4,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../../core/theme/spacing.dart';
 import '../domain/document.dart';
 
-enum DocumentAction { rename, delete }
+enum DocumentAction { share, rename, delete }
 
 Future<DocumentAction?> showDocumentActions(
   BuildContext context,
@@ -19,6 +19,11 @@ Future<DocumentAction?> showDocumentActions(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          _ActionTile(
+            icon: LucideIcons.share2,
+            label: 'Share PDF',
+            action: DocumentAction.share,
+          ),
           _ActionTile(
             icon: LucideIcons.pencil,
             label: 'Rename',
