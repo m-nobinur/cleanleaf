@@ -74,12 +74,21 @@ class _Editor extends ConsumerStatefulWidget {
 
 class _EditorState extends ConsumerState<_Editor> {
   late final _quad = ValueNotifier<Quad>(widget.page.corners);
+  // Rebuilds the panel only when validity flips, not on every drag frame.
+  late final _valid = ValueNotifier(isValidQuad(widget.page.corners));
   late int _rotation = widget.page.rotation;
   bool _saving = false;
 
   @override
+  void initState() {
+    super.initState();
+    _quad.addListener(() => _valid.value = isValidQuad(_quad.value));
+  }
+
+  @override
   void dispose() {
     _quad.dispose();
+    _valid.dispose();
     super.dispose();
   }
 
@@ -142,9 +151,8 @@ class _EditorState extends ConsumerState<_Editor> {
           ),
         ),
         ValueListenableBuilder(
-          valueListenable: _quad,
-          builder: (context, quad, _) {
-            final valid = isValidQuad(quad);
+          valueListenable: _valid,
+          builder: (context, valid, _) {
             return Padding(
               padding: const EdgeInsets.fromLTRB(
                 Spacing.lg,

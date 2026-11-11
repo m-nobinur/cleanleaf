@@ -8,7 +8,7 @@ import '../../../core/geometry/quad.dart';
 import '../domain/quad_geometry.dart';
 
 typedef _HandleSpec = ({
-  String label,
+  String Function(int quarterTurns) label,
   bool corner,
   Point Function(Quad quad) at,
   Quad Function(Quad start, Point delta) drag,
@@ -18,10 +18,11 @@ const _cornerNames = ['Top left', 'Top right', 'Bottom right', 'Bottom left'];
 const _edgeNames = ['Top', 'Right', 'Bottom', 'Left'];
 
 final List<_HandleSpec> _handles = [
+  // Labels name the on-screen position, so they follow the rotation.
   // Phase 2 (CRP-4) adds each edge's anchor handles next to its midpoint.
   for (var e = 0; e < 4; e++)
     (
-      label: '${_edgeNames[e]} edge',
+      label: (t) => '${_edgeNames[(e + t) % 4]} edge',
       corner: false,
       at: (q) => edgeMidpoint(q, e),
       drag: (q, d) => moveEdge(q, e, d),
@@ -29,7 +30,7 @@ final List<_HandleSpec> _handles = [
   // Corners last so they win hit tests where they overlap a midpoint.
   for (var i = 0; i < 4; i++)
     (
-      label: '${_cornerNames[i]} corner',
+      label: (t) => '${_cornerNames[(i + t) % 4]} corner',
       corner: true,
       at: (q) => q.corners[i],
       drag: (q, d) {
@@ -166,8 +167,9 @@ class _CropCanvasState extends State<CropCanvas> {
             ),
             ValueListenableBuilder(
               valueListenable: _loupeAt,
-              builder: (context, at, _) =>
-                  at == null ? const SizedBox.shrink() : _loupe(context, at),
+              builder: (context, at, _) => at == null
+                  ? const SizedBox.shrink()
+                  : _loupe(context, at, constraints.biggest),
             ),
           ],
         );
@@ -202,7 +204,7 @@ class _CropCanvasState extends State<CropCanvas> {
             width: _handleSize,
             height: _handleSize,
             child: Semantics(
-              label: h.label,
+              label: h.label(widget.quarterTurns),
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 dragStartBehavior: DragStartBehavior.down,
@@ -218,20 +220,29 @@ class _CropCanvasState extends State<CropCanvas> {
     );
   }
 
-  Widget _loupe(BuildContext context, Offset at) {
+  Widget _loupe(BuildContext context, Offset at, Size area) {
     final colors = ShadTheme.of(context).colorScheme;
-    // Above the finger, or below it when there is no room at the top.
-    final lift = at.dy - _loupeLift - _loupeSize / 2 < 0
-        ? -_loupeLift
-        : _loupeLift;
+    const r = _loupeSize / 2;
+    var center = at.translate(0, -_loupeLift);
+    // No room above: beside the finger, toward the middle, never under it.
+    if (center.dy < r) {
+      center = at.translate(
+        at.dx < area.width / 2 ? _loupeLift : -_loupeLift,
+        0,
+      );
+    }
+    center = Offset(
+      center.dx.clamp(r, math.max(r, area.width - r)),
+      center.dy.clamp(r, math.max(r, area.height - r)),
+    );
     return Positioned(
-      left: at.dx - _loupeSize / 2,
-      top: at.dy - lift - _loupeSize / 2,
+      left: center.dx - r,
+      top: center.dy - r,
       child: IgnorePointer(
         child: RawMagnifier(
           size: const Size.square(_loupeSize),
           magnificationScale: 2,
-          focalPointOffset: Offset(0, lift),
+          focalPointOffset: at - center,
           decoration: MagnifierDecoration(
             shape: CircleBorder(
               side: BorderSide(color: colors.primary, width: 2),

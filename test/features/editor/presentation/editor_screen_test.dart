@@ -47,6 +47,7 @@ final _png = Uint8List.fromList(img.encodePng(img.Image(width: 4, height: 3)));
 Future<FakePageRepository> pumpEditor(
   WidgetTester tester, {
   Quad? detectedCorners = detected,
+  Size pageSize = const Size(400, 300),
 }) async {
   tester.view
     ..physicalSize = const Size(1080, 2340)
@@ -82,8 +83,7 @@ Future<FakePageRepository> pumpEditor(
       overrides: [
         pageRepositoryProvider.overrideWithValue(repo),
         pageImageProvider.overrideWith(
-          (ref, path) async =>
-              (image: MemoryImage(_png), size: const Size(400, 300)),
+          (ref, path) async => (image: MemoryImage(_png), size: pageSize),
         ),
       ],
       child: ShadApp.router(
@@ -226,8 +226,9 @@ void main() {
     await tester.tap(find.byIcon(LucideIcons.rotateCw));
     await tester.pumpAndSettle();
     final size = imageSize(tester);
-    // Turned 90° clockwise, screen-down is the original image's +x.
-    await drag(tester, 'Top left corner', const Offset(0, 40));
+    // Turned 90° clockwise: the original top-left shows at the top right,
+    // and screen-down is the original image's +x.
+    await drag(tester, 'Top right corner', const Offset(0, 40));
     await tapContinue(tester);
 
     expect(repo.saved!.rotation, 90);
