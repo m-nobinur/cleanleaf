@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/storage/storage_providers.dart';
+import '../../library/domain/document.dart';
 import '../domain/ocr_engine.dart';
 import '../domain/ocr_repository.dart';
 import 'drift_ocr_repository.dart';
@@ -28,4 +29,14 @@ final ocrRepositoryProvider = Provider<OcrRepository>(
     ref.watch(appDatabaseProvider),
     ref.watch(ocrQueueProvider),
   ),
+);
+
+/// Documents matching [query] in their title or page text (all when blank).
+final documentSearchProvider = StreamProvider.family<List<Document>, String>(
+  (ref, query) => ref.watch(ocrRepositoryProvider).watchSearch(query),
+);
+
+/// Documents with a page waiting for or undergoing OCR.
+final readingDocumentIdsProvider = StreamProvider<Set<String>>(
+  (ref) => ref.watch(ocrRepositoryProvider).watchReadingDocumentIds(),
 );

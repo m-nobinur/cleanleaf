@@ -87,6 +87,10 @@ const thirdPartyNotices = <ThirdPartyNotice>[
     packages: ['JetBrains Mono'],
     assets: ['assets/licenses/JetBrainsMono-OFL.txt'],
   ),
+  ThirdPartyNotice(
+    packages: ['Noto Sans Bengali (subset)'],
+    assets: ['assets/licenses/NotoSansBengali-OFL.txt'],
+  ),
 ];
 
 const _apache = 'assets/licenses/Apache-2.0.txt';
