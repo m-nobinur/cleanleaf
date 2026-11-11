@@ -6,6 +6,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/geometry/quad.dart';
 import '../domain/quad_geometry.dart';
+import 'crop_view.dart';
 
 typedef _HandleSpec = ({
   String Function(int quarterTurns) label,
@@ -40,8 +41,9 @@ final List<_HandleSpec> _handles = [
     ),
 ];
 
-/// The page image with the editable quad. Corners stay in unrotated image
-/// space; [quarterTurns] only rotates the view.
+/// The page image with the editable quad, zoomed to the page on open; pinch
+/// or pan to move, double-tap to swap page and whole-photo views. Corners stay
+/// in unrotated image space; [quarterTurns] only rotates the view.
 class CropCanvas extends StatefulWidget {
   const CropCanvas({
     super.key,
@@ -49,12 +51,16 @@ class CropCanvas extends StatefulWidget {
     required this.imageSize,
     required this.quarterTurns,
     required this.quad,
+    this.onDragStart,
   });
 
   final ImageProvider image;
   final Size imageSize;
   final int quarterTurns;
   final ValueNotifier<Quad> quad;
+
+  /// Once per handle gesture, before the quad changes.
+  final VoidCallback? onDragStart;
 
   @override
   State<CropCanvas> createState() => _CropCanvasState();
@@ -65,12 +71,20 @@ class _CropCanvasState extends State<CropCanvas> {
   static const _pad = _handleSize / 2;
   static const _loupeSize = 112.0;
   static const _loupeLift = 96.0;
+  // Room around the page when zoomed to it, as a share of its size per side.
+  static const _pageMargin = 0.12;
 
   final _stackKey = GlobalKey();
   final _imageKey = GlobalKey();
   final _loupeAt = ValueNotifier<Offset?>(null);
   Quad? _startQuad;
   Point? _startPointer;
+  // The photo's rect in the unrotated stage, fitted on the first layout.
+  Rect? _view;
+  Size? _frame;
+  Rect _area = Rect.zero;
+  Rect? _zoomStart;
+  Offset _focalStart = Offset.zero;
 
   @override
   void dispose() {
@@ -96,6 +110,7 @@ class _CropCanvasState extends State<CropCanvas> {
   }
 
   void _onDragStart(_HandleSpec h, DragStartDetails d) {
+    widget.onDragStart?.call();
     _startQuad = widget.quad.value;
     _startPointer = _toImage(d.globalPosition);
     _showLoupe(h.at(_startQuad!));
@@ -106,43 +121,84 @@ class _CropCanvasState extends State<CropCanvas> {
     final delta = (x: now.x - _startPointer!.x, y: now.y - _startPointer!.y);
     final quad = h.drag(_startQuad!, delta);
     widget.quad.value = quad;
+    _reveal(h.at(quad));
     _showLoupe(h.at(quad));
   }
 
   void _onDragEnd() => _loupeAt.value = null;
 
+  // Pans a zoomed view so the dragged handle never leaves the stage.
+  void _reveal(Point p) {
+    final view = _view!;
+    final moved = revealView(
+      view,
+      _area,
+      view.topLeft + Offset(p.x * view.width, p.y * view.height),
+    );
+    if (moved != view) setState(() => _view = moved);
+  }
+
+  Rect _fitPage() => fitView(
+    widget.imageSize,
+    _area,
+    focus: quadBounds(widget.quad.value),
+    margin: _pageMargin,
+  );
+
+  void _onScaleStart(ScaleStartDetails d) {
+    _zoomStart = _view;
+    _focalStart = d.localFocalPoint;
+  }
+
+  void _onScaleUpdate(ScaleUpdateDetails d) => setState(
+    () => _view = zoomView(
+      _zoomStart!,
+      widget.imageSize,
+      _area,
+      scale: d.scale,
+      from: _focalStart,
+      to: d.localFocalPoint,
+    ),
+  );
+
+  void _onDoubleTap() {
+    final whole = fitView(widget.imageSize, _area);
+    setState(() => _view = _view!.width > whole.width + 1 ? whole : _fitPage());
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final turned = widget.quarterTurns.isOdd;
-        final available = Size(
-          math.max(0, constraints.maxWidth - 2 * _pad),
-          math.max(0, constraints.maxHeight - 2 * _pad),
-        );
-        final shown = applyBoxFit(
-          BoxFit.contain,
-          turned ? widget.imageSize.flipped : widget.imageSize,
-          available,
-        ).destination;
-        final size = turned ? shown.flipped : shown;
+        final stage = constraints.biggest;
+        final frame = widget.quarterTurns.isOdd ? stage.flipped : stage;
+        if (_view == null || frame != _frame) {
+          _frame = frame;
+          _area = Rect.fromLTWH(
+            _pad,
+            _pad,
+            math.max(1, frame.width - 2 * _pad),
+            math.max(1, frame.height - 2 * _pad),
+          );
+          _view = _fitPage();
+        }
+        final view = _view!;
         return Stack(
           key: _stackKey,
           fit: StackFit.expand,
           children: [
-            Center(
+            ClipRect(
               child: RotatedBox(
                 quarterTurns: widget.quarterTurns,
-                child: SizedBox(
-                  width: size.width + 2 * _pad,
-                  height: size.height + 2 * _pad,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onScaleStart: _onScaleStart,
+                  onScaleUpdate: _onScaleUpdate,
+                  onDoubleTap: _onDoubleTap,
                   child: Stack(
                     children: [
-                      Positioned(
-                        left: _pad,
-                        top: _pad,
-                        width: size.width,
-                        height: size.height,
+                      Positioned.fromRect(
+                        rect: view,
                         child: RepaintBoundary(
                           child: Image(
                             key: _imageKey,
@@ -157,7 +213,7 @@ class _CropCanvasState extends State<CropCanvas> {
                         child: ValueListenableBuilder(
                           valueListenable: widget.quad,
                           builder: (context, quad, _) =>
-                              _overlay(context, quad, size),
+                              _overlay(context, quad, view),
                         ),
                       ),
                     ],
@@ -177,15 +233,12 @@ class _CropCanvasState extends State<CropCanvas> {
     );
   }
 
-  Widget _overlay(BuildContext context, Quad quad, Size size) {
+  Widget _overlay(BuildContext context, Quad quad, Rect view) {
     final colors = ShadTheme.of(context).colorScheme;
     return Stack(
       children: [
-        Positioned(
-          left: _pad,
-          top: _pad,
-          width: size.width,
-          height: size.height,
+        Positioned.fromRect(
+          rect: view,
           child: IgnorePointer(
             child: CustomPaint(
               painter: _QuadPainter(
@@ -198,9 +251,8 @@ class _CropCanvasState extends State<CropCanvas> {
         ),
         for (final h in _handles)
           Positioned(
-            // _pad is half a handle, so the image offset and centering cancel.
-            left: h.at(quad).x * size.width,
-            top: h.at(quad).y * size.height,
+            left: view.left + h.at(quad).x * view.width - _pad,
+            top: view.top + h.at(quad).y * view.height - _pad,
             width: _handleSize,
             height: _handleSize,
             child: Semantics(

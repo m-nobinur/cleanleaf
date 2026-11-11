@@ -28,7 +28,7 @@ Future<void> importFromGallery(BuildContext context, WidgetRef ref) async {
   try {
     final page = await ref.read(galleryImportProvider)();
     if (page == null || !context.mounted) return;
-    await context.push(AppRoutes.editor(page.id));
+    await context.push(AppRoutes.editor(page.id, fresh: true));
   } on Object {
     if (!context.mounted) return;
     ShadToaster.of(context).show(

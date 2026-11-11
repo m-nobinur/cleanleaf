@@ -130,10 +130,12 @@ Future<Map<String, ScannedCode>> _bench(
     });
     final stillMs = await _stillMs(encoded, formats);
     times.sort();
-    final read = code?.text == expected[name];
+    // match: the decode equals expected.json; for no_code that means nothing found.
+    final match = code?.text == expected[name];
     if (code case final c?) decoded[name] = c;
     _log(
-      'bench $name ${luma.width}x${luma.height} read=$read '
+      'bench $name ${luma.width}x${luma.height} found=${code != null} '
+      'match=$match '
       'format=${code?.format} frame_p50=${times[7].toStringAsFixed(1)} '
       'frame_p90=${times[13].toStringAsFixed(1)} '
       'still_ms=${stillMs.toStringAsFixed(1)}',

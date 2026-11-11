@@ -55,7 +55,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
   CameraFailure? _failure;
   bool _torch = false;
   bool _busy = false;
-  // Another route (confirm, editor, picker) is on top; the camera stays off.
+  // Another route (editor, picker) is on top; the camera stays off.
   bool _covered = false;
   bool _askingPermission = false;
   // Never shoots before the stored setting loads: it may be off.
@@ -240,11 +240,11 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
         liveQuad: liveQuad,
       );
       debugPrint(
-        'CLMETRIC shutter_to_confirm capture_ms=$captureMs '
+        'CLMETRIC shutter_to_editor capture_ms=$captureMs '
         'total_ms=${watch.elapsedMilliseconds}',
       );
       if (!mounted) return;
-      await _cover(() => context.push(AppRoutes.confirm(page.id)));
+      await _cover(() => context.push(AppRoutes.editor(page.id, fresh: true)));
     } on Object {
       _autoCapture.markShot(null);
       if (!mounted) return;
