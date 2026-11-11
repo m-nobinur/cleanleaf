@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'app_database.dart';
 import 'file_store.dart';
+import 'settings_store.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase(driftDatabase(name: 'cleanleaf'));
@@ -17,3 +18,7 @@ final fileStoreProvider = Provider<FileStore>((ref) {
   Future<Directory>? root;
   return FileStore(() => root ??= getApplicationSupportDirectory());
 });
+
+final settingsStoreProvider = Provider<SettingsStore>(
+  (ref) => SettingsStore(getApplicationSupportDirectory),
+);
