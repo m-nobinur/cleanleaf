@@ -30,7 +30,7 @@ void main() {
   });
 
   Future<DocumentPage> addPage(String docId) =>
-      pages.add(docId, original: Stream.value([1, 2]), corners: fullFrame);
+      pages.add(docId, original: Stream.value([1, 2]), detectedCorners: null);
 
   Future<List<String>> pageIds(String docId) async =>
       (await pages.getByDocument(docId)).map((p) => p.id).toList();
@@ -118,6 +118,30 @@ void main() {
       expect(stored.rotation, 90);
       expect(stored.filter, PageFilter.blackWhite);
       expect(stored.filterParams, {'threshold': 0.4});
+    });
+
+    test('get finds a page by id; detected corners survive edits', () async {
+      final doc = await docs.create('A');
+      const detected = (
+        topLeft: (x: 0.1, y: 0.1),
+        topRight: (x: 0.9, y: 0.1),
+        bottomRight: (x: 0.9, y: 0.9),
+        bottomLeft: (x: 0.1, y: 0.9),
+      );
+      final page = await pages.add(
+        doc.id,
+        original: Stream.value([1]),
+        detectedCorners: detected,
+      );
+      expect(page.corners, detected);
+
+      await pages.updateEdits(page.copyWith(corners: fullFrame));
+
+      final stored = (await pages.get(page.id))!;
+      expect(stored.corners, fullFrame);
+      expect(stored.detectedCorners, detected);
+      expect((await addPage(doc.id)).detectedCorners, isNull);
+      expect(await pages.get('missing'), isNull);
     });
 
     test('saveRender stores render and thumb paths', () async {

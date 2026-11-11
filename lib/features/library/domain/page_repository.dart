@@ -7,11 +7,14 @@ abstract interface class PageRepository {
 
   Future<List<DocumentPage>> getByDocument(String documentId);
 
+  Future<DocumentPage?> get(String pageId);
+
   /// Stores [original] and appends the page at the end of the document.
+  /// Corners start at [detectedCorners], or the full frame when none.
   Future<DocumentPage> add(
     String documentId, {
     required Stream<List<int>> original,
-    required Quad corners,
+    required Quad? detectedCorners,
   });
 
   /// Saves the edit parameters (corners, anchors, rotation, filter, params).
