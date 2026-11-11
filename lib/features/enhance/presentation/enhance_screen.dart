@@ -7,8 +7,9 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/storage/storage_providers.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/radii.dart';
 import '../../../core/theme/spacing.dart';
-import '../../editor/presentation/editor_providers.dart';
+import '../../../core/widgets/round_icon_button.dart';
 import '../../library/data/library_providers.dart';
 import '../../library/domain/document_page.dart';
 import '../data/enhance_providers.dart';
@@ -39,7 +40,7 @@ class EnhanceScreen extends ConsumerWidget {
         child: Builder(
           builder: (context) {
             final theme = ShadTheme.of(context);
-            final pageAsync = ref.watch(editorPageProvider(pageId));
+            final pageAsync = ref.watch(enhancePageProvider(pageId));
             return Scaffold(
               backgroundColor: theme.colorScheme.background,
               body: DefaultTextStyle.merge(
@@ -209,16 +210,16 @@ class _EnhanceState extends ConsumerState<_Enhance> {
           child: Row(
             spacing: Spacing.md,
             children: [
-              ShadIconButton.outline(
-                width: kMinInteractiveDimension,
-                height: kMinInteractiveDimension,
-                icon: const Icon(LucideIcons.rotateCw),
-                onPressed: _saving
-                    ? null
-                    : () => setState(() {
-                        _rotation = (_rotation + 90) % 360;
-                        _renders.clear();
-                      }),
+              RoundIconButton(
+                icon: LucideIcons.rotateCw,
+                label: 'Rotate',
+                onPressed: () {
+                  if (_saving) return;
+                  setState(() {
+                    _rotation = (_rotation + 90) % 360;
+                    _renders.clear();
+                  });
+                },
               ),
               Expanded(
                 child: ShadButton(
@@ -247,6 +248,7 @@ class _Preview extends StatefulWidget {
 
 class _PreviewState extends State<_Preview> {
   Uint8List? _bytes;
+  Future<Uint8List>? _shown;
   Object? _error;
 
   @override
@@ -266,7 +268,12 @@ class _PreviewState extends State<_Preview> {
     _error = null;
     future.then(
       (bytes) {
-        if (mounted && future == widget.future) setState(() => _bytes = bytes);
+        if (mounted && future == widget.future) {
+          setState(() {
+            _bytes = bytes;
+            _shown = future;
+          });
+        }
       },
       onError: (Object error) {
         if (mounted && future == widget.future) setState(() => _error = error);
@@ -282,20 +289,28 @@ class _PreviewState extends State<_Preview> {
         child: Text("Couldn't render this page.", style: theme.textTheme.muted),
       );
     }
+    const spinner = Center(
+      child: SizedBox.square(
+        dimension: 24,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
+    );
     final bytes = _bytes;
-    if (bytes == null) {
-      return const Center(
-        child: SizedBox.square(
-          dimension: 24,
-          child: CircularProgressIndicator(strokeWidth: 2),
+    if (bytes == null) return spinner;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Opacity(
+          opacity: _shown == widget.future ? 1 : 0.5,
+          child: Image.memory(
+            bytes,
+            gaplessPlayback: true,
+            fit: BoxFit.contain,
+            semanticLabel: 'Page preview',
+          ),
         ),
-      );
-    }
-    return Image.memory(
-      bytes,
-      gaplessPlayback: true,
-      fit: BoxFit.contain,
-      semanticLabel: 'Page preview',
+        if (_shown != widget.future) spinner,
+      ],
     );
   }
 }
@@ -335,9 +350,9 @@ class _FilterChip extends StatelessWidget {
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   color: colors.card,
-                  borderRadius: theme.radius,
+                  borderRadius: BorderRadius.circular(Radii.sm),
                   border: Border.all(
-                    color: selected ? colors.primary : colors.border,
+                    color: selected ? colors.primary : colors.hairline,
                     width: selected ? 2 : 1,
                   ),
                 ),

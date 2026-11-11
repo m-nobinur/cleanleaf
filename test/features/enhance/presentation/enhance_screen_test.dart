@@ -5,6 +5,7 @@ import 'package:cleanleaf/core/geometry/quad.dart';
 import 'package:cleanleaf/core/storage/file_store.dart';
 import 'package:cleanleaf/core/storage/storage_providers.dart';
 import 'package:cleanleaf/core/theme/app_theme.dart';
+import 'package:cleanleaf/features/editor/presentation/editor_providers.dart';
 import 'package:cleanleaf/features/enhance/data/enhance_providers.dart';
 import 'package:cleanleaf/features/enhance/domain/page_renderer.dart';
 import 'package:cleanleaf/features/enhance/presentation/enhance_screen.dart';
@@ -49,7 +50,7 @@ class FakeRenderer implements PageRenderer {
 class FakePageRepository extends Fake implements PageRepository {
   FakePageRepository(this.page);
 
-  final DocumentPage page;
+  DocumentPage page;
   DocumentPage? edited;
   Uint8List? savedRender;
 
@@ -74,8 +75,9 @@ class FakePageRepository extends Fake implements PageRepository {
 }
 
 Future<({FakeRenderer renderer, FakePageRepository repo})> pumpEnhance(
-  WidgetTester tester,
-) async {
+  WidgetTester tester, {
+  bool afterEditor = false,
+}) async {
   tester.view.physicalSize = const Size(400, 800);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -90,14 +92,22 @@ Future<({FakeRenderer renderer, FakePageRepository repo})> pumpEnhance(
     ),
   );
   final router = GoRouter(
-    initialLocation: '/enhance/p1',
+    initialLocation: afterEditor ? '/' : '/enhance/p1',
     routes: [
       GoRoute(
         path: '/enhance/:pageId',
         builder: (_, state) =>
             EnhanceScreen(pageId: state.pathParameters['pageId']!),
       ),
-      GoRoute(path: '/', builder: (_, _) => const Text('Library stub')),
+      GoRoute(
+        path: '/',
+        builder: (context, _) => afterEditor
+            ? TextButton(
+                onPressed: () => context.push('/enhance/p1'),
+                child: const Text('Open'),
+              )
+            : const Text('Library stub'),
+      ),
     ],
   );
   addTearDown(router.dispose);
@@ -118,6 +128,26 @@ Future<({FakeRenderer renderer, FakePageRepository repo})> pumpEnhance(
     ),
   );
   await tester.pumpAndSettle();
+  if (afterEditor) {
+    // The editor stays mounted under enhance, holding its pre-crop page.
+    final container = ProviderScope.containerOf(
+      tester.element(find.text('Open')),
+    );
+    final keepAlive = container.listen(editorPageProvider('p1'), (_, _) {});
+    addTearDown(keepAlive.close);
+    await container.read(editorPageProvider('p1').future);
+    repo.page = repo.page.copyWith(
+      rotation: 90,
+      corners: (
+        topLeft: (x: 0.2, y: 0.2),
+        topRight: (x: 0.8, y: 0.2),
+        bottomRight: (x: 0.8, y: 0.8),
+        bottomLeft: (x: 0.2, y: 0.8),
+      ),
+    );
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+  }
   return (renderer: renderer, repo: repo);
 }
 
@@ -175,5 +205,16 @@ void main() {
       maxLongSide: 0,
     ));
     expect(find.text('Library stub'), findsOneWidget);
+  });
+
+  testWidgets('opens on the page as saved by the editor, not its cached copy', (
+    tester,
+  ) async {
+    final (:renderer, :repo) = await pumpEnhance(tester, afterEditor: true);
+
+    expect(renderer.calls.first.rotation, 90);
+    await tester.tap(find.widgetWithText(ShadButton, 'Save'));
+    await tester.pumpAndSettle();
+    expect(repo.edited!.rotation, 90);
   });
 }
