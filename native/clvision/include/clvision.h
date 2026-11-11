@@ -79,6 +79,23 @@ CLV_API int32_t clv_thumbnail(const uint8_t* encoded, int32_t length, int32_t ma
 
 CLV_API void clv_free(void* buffer);
 
+// DocAligner LC100 corner model (decisions.md D-11), run with LiteRT + XNNPACK.
+// Input: 256x256x3 BGR floats in 0..1, NHWC, stretch-resized from a colour image.
+// Output: 128x128x4 heatmaps, NHWC, channels TL, TR, BR, BL.
+#define CLV_MODEL_INPUT_SIZE 256
+#define CLV_MODEL_HEATMAP_SIZE 128
+
+enum { CLV_ERR_MODEL_NOT_LOADED = -6 };
+
+// Loads the model once per process (the bytes are copied); later calls return
+// CLV_OK without reloading.
+CLV_API int32_t clv_model_load(const uint8_t* model, int32_t length);
+
+CLV_API int32_t clv_model_loaded(void);
+
+// Thread-safe; concurrent callers are serialized.
+CLV_API int32_t clv_model_run(const float* input, float* heatmaps_out);
+
 #ifdef __cplusplus
 }
 #endif

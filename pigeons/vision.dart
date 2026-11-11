@@ -11,4 +11,7 @@ import 'package:pigeon/pigeon.dart';
 abstract class VisionHostApi {
   /// OpenCV version reported by libclvision through JNI.
   String opencvVersion();
+
+  /// Whether libclvision as seen from Kotlin holds the DocAligner model.
+  bool isModelLoaded();
 }

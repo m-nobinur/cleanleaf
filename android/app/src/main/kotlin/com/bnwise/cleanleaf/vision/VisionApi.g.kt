@@ -60,6 +60,8 @@ private open class VisionApiPigeonCodec : StandardMessageCodec() {
 interface VisionHostApi {
   /** OpenCV version reported by libclvision through JNI. */
   fun opencvVersion(): String
+  /** Whether libclvision as seen from Kotlin holds the DocAligner model. */
+  fun isModelLoaded(): Boolean
 
   companion object {
     /** The codec used by VisionHostApi. */
@@ -76,6 +78,21 @@ interface VisionHostApi {
           channel.setMessageHandler { _, reply ->
             val wrapped: List<Any?> = try {
               listOf(api.opencvVersion())
+            } catch (exception: Throwable) {
+              VisionApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.cleanleaf.VisionHostApi.isModelLoaded$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              listOf(api.isModelLoaded())
             } catch (exception: Throwable) {
               VisionApiPigeonUtils.wrapError(exception)
             }
