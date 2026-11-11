@@ -117,13 +117,19 @@ void main(List<String> args) async {
       names: {'clvision': 'core/platform/clvision.dart'},
     );
     // Host tests resolve LiteRT through clvision's rpath; Android bundles it.
+    // Bundle a copy: Flutter moves asset files, which would empty the cache.
     if (code.targetOS == OS.android) {
+      final bundled = File.fromUri(
+        input.outputDirectory.resolve('litert/libtensorflowlite_jni.so'),
+      );
+      bundled.parent.createSync(recursive: true);
+      File(litertLibrary).copySync(bundled.path);
       output.assets.code.add(
         CodeAsset(
           package: input.packageName,
           name: 'core/platform/litert.dart',
           linkMode: DynamicLoadingBundled(),
-          file: Uri.file(litertLibrary),
+          file: bundled.uri,
         ),
       );
     }
