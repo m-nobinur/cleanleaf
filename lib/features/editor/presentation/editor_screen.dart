@@ -52,7 +52,9 @@ class EditorScreen extends ConsumerWidget {
       return Center(
         child: Text(
           "Couldn't open this page.",
-          style: ShadTheme.of(context).textTheme.muted,
+          style: ShadTheme.of(context).textTheme.muted.copyWith(
+            color: ShadTheme.of(context).colorScheme.mutedForeground,
+          ),
         ),
       );
     }
