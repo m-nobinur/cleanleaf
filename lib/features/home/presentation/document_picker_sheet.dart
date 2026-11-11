@@ -16,6 +16,7 @@ Future<Document?> showDocumentPicker(
     final theme = ShadTheme.of(context);
     return ShadSheet(
       radius: const BorderRadius.vertical(top: Radius.circular(Radii.lg)),
+      removeBorderRadiusWhenTiny: false,
       title: const Text('Export PDF'),
       description: const Text('Pick a document to share.'),
       child: ConstrainedBox(

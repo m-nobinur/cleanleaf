@@ -117,7 +117,9 @@ class _HomeTabState extends State<HomeTab> {
                 tone: TileTone.ember,
                 icon: LucideIcons.share2,
                 title: 'Export',
-                caption: 'PDF and share',
+                caption: widget.onExport == null
+                    ? 'Scan something first'
+                    : 'PDF and share',
                 onTap: widget.onExport,
               ),
               BentoTile(

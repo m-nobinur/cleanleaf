@@ -73,6 +73,7 @@ class ScanModeSheet extends StatelessWidget {
     final colors = theme.colorScheme;
     return ShadSheet(
       radius: const BorderRadius.vertical(top: Radius.circular(Radii.lg)),
+      removeBorderRadiusWhenTiny: false,
       closeIcon: const SizedBox.shrink(),
       title: Row(
         children: [
@@ -103,6 +104,8 @@ class ScanModeSheet extends StatelessWidget {
               crossAxisCount: 2,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
+              // Without it the grid adds the status-bar inset as top padding.
+              padding: EdgeInsets.zero,
               mainAxisSpacing: Spacing.md,
               crossAxisSpacing: Spacing.md,
               childAspectRatio: 1.05,

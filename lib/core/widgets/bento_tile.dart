@@ -27,7 +27,9 @@ class BentoTile extends StatefulWidget {
   /// Null disables the tile.
   final VoidCallback? onTap;
 
-  /// Small mono tag in the top-right corner, e.g. "SOON".
+  /// Small mono tag in the top-right corner, e.g. "SOON". A disabled tile
+  /// with a badge is an unbuilt feature and is dimmed; without one it keeps
+  /// full colour and its caption says why it is idle.
   final String? badge;
 
   @override
@@ -126,7 +128,7 @@ class _BentoTileState extends State<BentoTile> {
           duration: const Duration(milliseconds: 150),
           curve: Curves.easeOut,
           child: Opacity(
-            opacity: enabled ? 1 : 0.55,
+            opacity: enabled || widget.badge == null ? 1 : 0.55,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: background,

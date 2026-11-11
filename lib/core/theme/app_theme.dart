@@ -125,9 +125,9 @@ abstract final class AppTheme {
         'highlight': Brand.ember,
         'hairline': Color(0xFF2E2E2E),
         'badge': Color(0xFF242424),
-        // Leaf and ember at 18% over ink, pre-blended to opaque.
+        // Leaf at 18% and ember at 15% over ink, pre-blended to opaque.
         'tileLeaf': Color(0xFF10271E),
-        'tileEmber': Color(0xFF381F13),
+        'tileEmber': Color(0xFF321C13),
         'tileMist': Color(0xFF1B1B1B),
         'tileInk': Color(0xFFF4F4F4),
         'onTileInk': Brand.ink,

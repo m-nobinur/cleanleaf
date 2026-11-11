@@ -96,6 +96,7 @@ void main() {
       await pumpHome(tester);
       expect(find.text('Your scans will show up here.'), findsOneWidget);
       expect(find.text('0 documents'), findsOneWidget);
+      expect(find.text('Scan something first'), findsOneWidget);
 
       await tapAndSettle(tester, find.byKey(const ValueKey('tile-export')));
       expect(find.text('Export PDF'), findsNothing);
