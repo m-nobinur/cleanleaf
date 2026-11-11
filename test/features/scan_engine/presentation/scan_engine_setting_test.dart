@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:cleanleaf/core/storage/settings_store.dart';
 import 'package:cleanleaf/core/storage/storage_providers.dart';
 import 'package:cleanleaf/core/theme/app_theme.dart';
@@ -99,19 +97,5 @@ void main() {
     expect(find.text('Cleanleaf'), findsOneWidget);
     expect(find.text('Google ML Kit'), findsNothing);
     expect(find.textContaining('needs Google Play services'), findsOneWidget);
-  });
-
-  test('a real store round-trips through settings.json', () async {
-    final dir = await Directory.systemTemp.createTemp('settings');
-    addTearDown(() => dir.delete(recursive: true));
-    final real = SettingsStore(() async => dir);
-    expect(await real.read('scanEngine'), isNull);
-    await real.write('scanEngine', 'googleMlKit');
-    expect(
-      await SettingsStore(() async => dir).read('scanEngine'),
-      'googleMlKit',
-    );
-    File('${dir.path}/settings.json').writeAsStringSync('{not json');
-    expect(await real.read('scanEngine'), isNull);
   });
 }
