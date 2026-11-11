@@ -75,7 +75,8 @@ def main() -> None:
 
     tag_names = sorted({t for r in next(iter(rows.values())) for t in r["tags"]})
     print(f"\n{len(labels)} images, tolerance {TOL:.0%} of diagonal, frozen conf threshold {det.CONF_THRESHOLD}")
-    hdr = f"{'candidate':<16} {'overall':>8} {'strict':>7} {'docs':>7} {'no-doc':>7} {'low-con':>8} {'med err':>8} {'Mac ms':>7}"
+    hdr = (f"{'candidate':<16} {'overall':>8} {'strict':>7} {'docs':>7} {'docs@1%':>8} {'no-doc':>7} {'low-con':>8} "
+           f"{'med err':>8} {'p90 err':>8} {'Mac ms':>7}")
     print(hdr)
     summary = {}
     for name, rs in rows.items():
@@ -87,12 +88,15 @@ def main() -> None:
         dc, _ = rate(r for r in rs if "document" in r["tags"])
         nd, _ = rate(r for r in rs if "no-document" in r["tags"])
         lc, nlc = rate(r for r in rs if "low-contrast" in r["tags"])
-        errs = [r["err"] for r in rs if r["err"] is not None]
+        errs = [r["err"] for r in rs if r["err"] is not None and r["hit"]]
         med = float(np.median(errs)) if errs else float("nan")
+        p90 = float(np.percentile(errs, 90)) if errs else float("nan")
+        doc_rows = [r for r in rs if "document" in r["tags"]]
+        d1 = sum(r["err"] is not None and r["err"] <= TOL / 2 for r in doc_rows) / max(1, len(doc_rows))
         ms = float(np.median([r["ms"] for r in rs]))
-        print(f"{name:<16} {ov:>8.1%} {st:>7.1%} {dc:>7.1%} {nd:>7.1%} {lc:>8.1%} {med:>8.2%} {ms:>7.1f}")
-        summary[name] = {"overall": ov, "strict": st, "docs": dc, "no_doc": nd, "low_contrast": lc,
-                         "median_err": med, "mac_ms": ms,
+        print(f"{name:<16} {ov:>8.1%} {st:>7.1%} {dc:>7.1%} {d1:>8.1%} {nd:>7.1%} {lc:>8.1%} {med:>8.2%} {p90:>8.2%} {ms:>7.1f}")
+        summary[name] = {"overall": ov, "strict": st, "docs": dc, "docs_1pct": d1, "no_doc": nd, "low_contrast": lc,
+                         "median_err_of_hits": med, "p90_err_of_hits": p90, "mac_ms": ms,
                          "per_tag": {t: rate(r for r in rs if t in r["tags"]) for t in tag_names}}
     print("\nper-tag pass rate (n):")
     print(f"{'tag':<14}" + "".join(f"{n[:14]:>16}" for n in rows))

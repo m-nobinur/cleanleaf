@@ -6,6 +6,8 @@ corners (canonical order: clockwise from the min x+y corner) or None.
 Frozen parameters (fixed before any fixture labels existed):
 - B: DocAligner's own post-processing, heatmap threshold 0.3; a channel with
   no blob means "no clear peak" (CONF_THRESHOLD = 0.3 on the min channel peak).
+  The model quad must also be convex with angles in 30-150 degrees and cover
+  at least 2% of the frame; otherwise it counts as no clear peak.
 - C: edge search radius 2.5% of the image diagonal, Gaussian prior sigma R/2.
 - A: still path at 1000 px long side, passes and limits as written below.
 """
@@ -20,6 +22,7 @@ CONF_THRESHOLD = 0.3
 HEATMAP_THRESHOLD = 0.3
 REFINE_RADIUS = 0.025
 CLASSICAL_SIDE = 1000
+MODEL_MIN_AREA = 0.02
 
 
 def canonical(pts: np.ndarray) -> np.ndarray:
@@ -93,11 +96,14 @@ def blob_centroid_lowres(ch: np.ndarray, w: int, h: int):
 def refine(bgr: np.ndarray, quad: np.ndarray, radius_frac: float = REFINE_RADIUS) -> np.ndarray:
     """Snap each corner to the intersection of the two nearby page edges.
 
-    For every side, sample the half next to each corner, search along the side
-    normal (+-R) for the strongest directional gradient with a consistent sign,
-    weighted by a Gaussian prior around the model's line, robust-fit a line,
-    then intersect. A corner keeps the model position when the edge support is
-    weak or the snap moves further than R.
+    For every side, sample the half next to each corner, search along the
+    outward side normal (+-R) for the strongest directional gradient, weighted
+    by a Gaussian prior around the model's line, robust-fit a line, then
+    intersect. Only gradients with the page boundary's polarity count (median
+    gray just outside vs just inside the model quad), so strong edges of
+    content blocks inside a low-contrast page are ignored; with no measurable
+    polarity the model quad is kept. A corner keeps the model position when the
+    edge support is weak or the snap moves beyond R.
     """
     h, w = bgr.shape[:2]
     R = radius_frac * float(np.hypot(w, h))
@@ -106,6 +112,29 @@ def refine(bgr: np.ndarray, quad: np.ndarray, radius_frac: float = REFINE_RADIUS
     gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
     offsets = np.arange(-R, R + 1, 1.0, dtype=np.float32)
     prior = np.exp(-0.5 * (offsets / (R / 2)) ** 2)
+    centroid = quad.mean(0)
+
+    def outward_normal(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        u = (b - a) / float(np.hypot(*(b - a)))
+        n = np.array([-u[1], u[0]])
+        return n if np.dot(n, (a + b) / 2 - centroid) >= 0 else -n
+
+    def sample(img: np.ndarray, p: np.ndarray) -> np.ndarray:
+        keep = (p[:, 0] >= 0) & (p[:, 0] < w) & (p[:, 1] >= 0) & (p[:, 1] < h)
+        p = p[keep].astype(np.float32)
+        return cv2.remap(img, p[:, :1], p[:, 1:], cv2.INTER_LINEAR).ravel() if len(p) else np.empty(0)
+
+    inner, outer = [], []
+    for i in range(4):
+        a, b = quad[i], quad[(i + 1) % 4]
+        n = outward_normal(a, b)
+        base = a[None] + np.linspace(0.1, 0.9, 16)[:, None] * (b - a)[None]
+        inner.append(sample(gray, base - n * R / 2))
+        outer.append(sample(gray, base + n * R / 2))
+    contrast = float(np.median(np.concatenate(outer)) - np.median(np.concatenate(inner)))
+    if abs(contrast) < 2.0:  # no visible page boundary in gray: nothing to snap to
+        return quad.astype(np.float64)
+    sign = float(np.sign(contrast))
 
     def half_line(a: np.ndarray, b: np.ndarray):
         """Line fitted to the half of side a->b nearest a. Returns (point, dir) or None."""
@@ -113,8 +142,7 @@ def refine(bgr: np.ndarray, quad: np.ndarray, radius_frac: float = REFINE_RADIUS
         L = float(np.hypot(*d))
         if L < 4:
             return None
-        u = d / L
-        n = np.array([-u[1], u[0]])
+        n = outward_normal(a, b)
         ts = np.linspace(0.03, 0.5, 24)
         base = a[None] + ts[:, None] * d[None]
         pts = base[:, None, :] + offsets[None, :, None] * n[None, None, :]
@@ -122,13 +150,9 @@ def refine(bgr: np.ndarray, quad: np.ndarray, radius_frac: float = REFINE_RADIUS
         gn = (cv2.remap(gx, mx, my, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE) * n[0]
               + cv2.remap(gy, mx, my, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE) * n[1])
         inside = (mx >= 0) & (mx < w) & (my >= 0) & (my < h)
-        best = []
-        for sign in (1.0, -1.0):
-            score = np.where(inside, np.maximum(sign * gn, 0) * prior[None], 0)
-            j = score.argmax(1)
-            best.append((score[np.arange(len(ts)), j], j))
-        s_pos, s_neg = best[0][0].sum(), best[1][0].sum()
-        strength, j = best[0] if s_pos >= s_neg else best[1]
+        score = np.where(inside, np.maximum(sign * gn, 0) * prior[None], 0)
+        j = score.argmax(1)
+        strength = score[np.arange(len(ts)), j]
         strong = strength > 0.35 * np.median(strength[strength > 0]) if (strength > 0).any() else strength > 0
         if strong.sum() < 8 or np.median(strength) < 4.0:
             return None
@@ -159,11 +183,11 @@ def refine(bgr: np.ndarray, quad: np.ndarray, radius_frac: float = REFINE_RADIUS
 
 # ------------------------------------------------------------ A: classical
 
-def _valid_quad(q: np.ndarray, img_area: float) -> bool:
+def _valid_quad(q: np.ndarray, img_area: float, min_area: float = 0.08) -> bool:
     if len(q) != 4 or not cv2.isContourConvex(q.astype(np.float32)):
         return False
     area = cv2.contourArea(q.astype(np.float32))
-    if not (0.08 * img_area <= area <= 0.98 * img_area):
+    if not (min_area * img_area <= area <= 0.98 * img_area):
         return False
     for i in range(4):
         a, b, c = q[i - 1], q[i], q[(i + 1) % 4]
@@ -245,18 +269,23 @@ def classical(bgr: np.ndarray) -> np.ndarray | None:
 
 # ------------------------------------------------------------- candidates
 
+def model_ok(o: ModelOutput, bgr: np.ndarray) -> bool:
+    """A clear peak in every channel and a sane quad (two channels on one corner is not)."""
+    area = bgr.shape[0] * bgr.shape[1]
+    return (o.corners is not None and o.peaks.min() >= CONF_THRESHOLD
+            and _valid_quad(o.corners, area, min_area=MODEL_MIN_AREA))
+
+
 def candidates(model: DocAligner):
     """Name -> fn(bgr) -> (corners | None, peaks | None)."""
 
     def b(bgr):
         o = model(bgr)
-        ok = o.corners is not None and o.peaks.min() >= CONF_THRESHOLD
-        return (o.corners if ok else None), o.peaks
+        return (o.corners if model_ok(o, bgr) else None), o.peaks
 
     def c(bgr):
         o = model(bgr)
-        ok = o.corners is not None and o.peaks.min() >= CONF_THRESHOLD
-        return (canonical(refine(bgr, o.corners)) if ok else None), o.peaks
+        return (canonical(refine(bgr, o.corners)) if model_ok(o, bgr) else None), o.peaks
 
     def with_fallback(fn):
         def run(bgr):
