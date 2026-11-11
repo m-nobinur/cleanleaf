@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'app.dart';
 import 'core/geometry/quad.dart';
+import 'core/platform/clvision.dart';
 import 'core/router/app_router.dart';
 import 'features/capture/data/capture_providers.dart';
 import 'features/capture/data/pigeon_document_camera.dart';
@@ -20,9 +21,9 @@ import 'features/capture/domain/document_camera.dart';
 // Device probe for the camera screen (T-008): run with -t, grant CAMERA, push
 // real photos (+ optional labels.json) to the app's external files dir, and
 // read `adb logcat -s flutter:I` until `CLBENCH DONE`. The live preview and
-// event cadence are the real camera's; until T-005 lands the outline is the
-// photo's labelled quad, and each shot returns that photo instead of the
-// still, so confirm shows a real page.
+// event cadence are the real camera's, but the outline is the photo's
+// labelled quad and each shot returns that photo instead of the still, so
+// confirm shows a real page (re-detected by the model, else the label).
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final photos = await _Photos.load();
@@ -36,6 +37,8 @@ Future<void> main() async {
       child: const CleanleafApp(),
     ),
   );
+  // Still re-detection on the photos uses the real model, as in main.dart.
+  unawaited(loadDocAligner());
   await _Script(container.read(routerProvider), camera, photos).run();
   _log('DONE');
 }
