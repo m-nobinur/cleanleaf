@@ -48,6 +48,10 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
   StreamSubscription<ScannedCode>? _codes;
   // A decoded code's sheet is up; later decodes wait for Scan again.
   bool _showingCode = false;
+  // The last shown code stays muted while frames keep seeing it, so a code
+  // left in view doesn't reopen the sheet after Scan again.
+  String? _shownText;
+  Timer? _rearm;
   Timer? _focusTimer;
 
   _Phase _phase = _Phase.starting;
@@ -80,6 +84,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
     _detections?.cancel();
     _codes?.cancel();
     _focusTimer?.cancel();
+    _rearm?.cancel();
     _generation++;
     unawaited(_camera.stop().catchError((_) {}));
     _detection.dispose();
@@ -181,18 +186,27 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
     if (_auto && _autoCapture.onDetection(detection)) _capture();
   }
 
-  Future<void> _onCode(ScannedCode code) async {
+  void _onCode(ScannedCode code) {
+    if (_mode.codeFamily == null) return;
+    if (code.text == _shownText) return _holdShown();
     if (_phase != _Phase.live || _busy || _showingCode) return;
-    await _showCode(code);
+    unawaited(_showCode(code));
+  }
+
+  void _holdShown() {
+    _rearm?.cancel();
+    _rearm = Timer(const Duration(seconds: 1), () => _shownText = null);
   }
 
   Future<void> _showCode(ScannedCode code) async {
     _showingCode = true;
+    _shownText = code.text;
     unawaited(HapticFeedback.mediumImpact());
     try {
       await showCodeResult(context, code, openLink: _camera.openLink);
     } finally {
       _showingCode = false;
+      _holdShown();
     }
   }
 

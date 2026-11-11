@@ -365,10 +365,24 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('https://example.org/a'), findsNothing);
+    // The same code still in view doesn't reopen the sheet...
+    await scanCode(tester, (format: 'QR Code', text: 'https://example.org/a'));
+    expect(find.text('https://example.org/a'), findsNothing);
+    // ...until it has been out of view for a moment.
+    await tester.pump(const Duration(milliseconds: 1200));
+    await scanCode(tester, (format: 'QR Code', text: 'https://example.org/a'));
+    expect(find.text('https://example.org/a'), findsOneWidget);
+    // Let the sheet finish sliding in before tapping it.
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text('Scan again'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
     await scanCode(tester, (format: 'QR Code', text: 'plain text'));
     expect(find.text('plain text'), findsOneWidget);
     expect(find.text('Open'), findsNothing);
     expect(scan.calls, isEmpty);
+    await tester.pump(const Duration(seconds: 2));
   });
 
   testWidgets('barcode mode opens directly and switches back to pages', (
