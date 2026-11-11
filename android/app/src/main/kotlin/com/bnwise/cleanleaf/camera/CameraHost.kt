@@ -10,6 +10,7 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.PluginRegistry
 import io.flutter.view.TextureRegistry
@@ -19,13 +20,14 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 
 class CameraHost(
     private val context: Context,
-    @Suppress("unused") private val textures: TextureRegistry,
+    textures: TextureRegistry,
 ) : CameraHostApi,
     PluginRegistry.RequestPermissionsResultListener {
     private var activityBinding: ActivityPluginBinding? = null
     private var pendingPermission: Continuation<CameraPermissionStatus>? = null
 
-    val cornerFrames = object : CornerFramesStreamHandler() {}
+    val cornerFrames = CornerFrameStream()
+    private val controller = CameraController(context, textures, cornerFrames)
 
     fun attach(binding: ActivityPluginBinding) {
         activityBinding = binding
@@ -33,8 +35,15 @@ class CameraHost(
     }
 
     fun detach() {
-        activityBinding?.removeRequestPermissionsResultListener(this)
+        val binding = activityBinding ?: return
+        binding.removeRequestPermissionsResultListener(this)
         activityBinding = null
+        controller.stop()
+        // A config change re-delivers the result to the next activity; a real teardown never answers.
+        if (!binding.activity.isChangingConfigurations) {
+            pendingPermission?.resume(if (isGranted()) CameraPermissionStatus.GRANTED else CameraPermissionStatus.DENIED)
+            pendingPermission = null
+        }
     }
 
     override suspend fun requestPermission(): CameraPermissionStatus {
@@ -94,18 +103,24 @@ class CameraHost(
         )
     }
 
-    override suspend fun start(): CameraSession = throw NotImplementedError("T-017")
+    override suspend fun start(): CameraSession {
+        if (!isGranted()) throw FlutterError("permissionDenied", "The camera permission is not granted", null)
+        val owner =
+            activityBinding?.activity as? LifecycleOwner
+                ?: throw FlutterError("unavailable", "No activity to bind the camera to", null)
+        return controller.start(owner)
+    }
 
-    override fun stop(): Unit = throw NotImplementedError("T-017")
+    override fun stop() = controller.stop()
 
-    override suspend fun capture(): String = throw NotImplementedError("T-017")
+    override suspend fun capture() = controller.capture()
 
-    override suspend fun setTorch(enabled: Boolean): Unit = throw NotImplementedError("T-017")
+    override suspend fun setTorch(enabled: Boolean) = controller.setTorch(enabled)
 
     override suspend fun focusAt(
         x: Double,
         y: Double,
-    ): Boolean = throw NotImplementedError("T-017")
+    ) = controller.focusAt(x, y)
 
     private fun isGranted() =
         ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
