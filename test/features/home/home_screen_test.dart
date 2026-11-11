@@ -1,3 +1,4 @@
+import 'package:cleanleaf/core/storage/storage_providers.dart';
 import 'package:cleanleaf/core/theme/app_theme.dart';
 import 'package:cleanleaf/features/capture/domain/scan_mode.dart';
 import 'package:cleanleaf/features/export/data/export_providers.dart';
@@ -46,6 +47,7 @@ void main() {
               'b': [fakePage('p3', 'b', 0)],
             }),
           ),
+          settingsStoreProvider.overrideWithValue(MemorySettingsStore()),
           shareDocumentPdfProvider.overrideWithValue(
             (id, {onProgress}) async => shared.add(id),
           ),

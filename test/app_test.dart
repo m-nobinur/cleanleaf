@@ -1,4 +1,5 @@
 import 'package:cleanleaf/app.dart';
+import 'package:cleanleaf/core/storage/storage_providers.dart';
 import 'package:cleanleaf/features/library/data/library_providers.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +19,7 @@ void main() {
             FakeDocumentRepository(),
           ),
           pageRepositoryProvider.overrideWithValue(FakePageRepository()),
+          settingsStoreProvider.overrideWithValue(MemorySettingsStore()),
         ],
         child: const CleanleafApp(),
       ),

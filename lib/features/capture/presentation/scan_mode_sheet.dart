@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
+import '../../../core/storage/storage_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/radii.dart';
 import '../../../core/theme/spacing.dart';
@@ -9,16 +10,21 @@ import '../../../core/widgets/bento_tile.dart';
 import '../../../core/widgets/corner_brackets.dart';
 import '../domain/scan_mode.dart';
 
-// shortcut: in memory only, resets to document on app start; persist once a prefs store exists.
-final lastScanModeProvider = NotifierProvider<LastScanMode, ScanMode>(
+final lastScanModeProvider = AsyncNotifierProvider<LastScanMode, ScanMode>(
   LastScanMode.new,
 );
 
-class LastScanMode extends Notifier<ScanMode> {
-  @override
-  ScanMode build() => ScanMode.document;
+class LastScanMode extends AsyncNotifier<ScanMode> {
+  static const _key = 'lastScanMode';
 
-  void set(ScanMode mode) => state = mode;
+  @override
+  Future<ScanMode> build() async =>
+      ScanMode.parse(await ref.watch(settingsStoreProvider).read(_key));
+
+  Future<void> set(ScanMode mode) async {
+    state = AsyncData(mode);
+    await ref.read(settingsStoreProvider).write(_key, mode.name);
+  }
 }
 
 extension ScanModeLabels on ScanMode {

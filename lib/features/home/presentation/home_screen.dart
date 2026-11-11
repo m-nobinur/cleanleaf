@@ -2,11 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/licenses/about_sheet.dart';
-import '../../../core/router/app_routes.dart';
 import '../../capture/domain/scan_mode.dart';
 import '../../capture/presentation/scan_mode_sheet.dart';
 import '../../export/data/export_providers.dart';
@@ -18,6 +16,7 @@ import '../../library/presentation/files_tab.dart';
 import '../../library/presentation/library_providers.dart';
 import '../../library/presentation/rename_dialog.dart';
 import '../../library/presentation/settings_sheet.dart';
+import '../../scan_engine/presentation/start_scan.dart';
 import 'document_picker_sheet.dart';
 import 'floating_nav.dart';
 import 'home_tab.dart';
@@ -53,8 +52,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _scanIn(ScanMode mode) async {
-    ref.read(lastScanModeProvider.notifier).set(mode);
-    await context.push(AppRoutes.captureIn(mode));
+    unawaited(ref.read(lastScanModeProvider.notifier).set(mode));
+    await startScan(context, ref, mode: mode);
   }
 
   Future<void> _chooseModeAndScan() async {
@@ -144,7 +143,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         .value
         ?.where((d) => !_hidden.contains(d.id))
         .toList();
-    final lastMode = ref.watch(lastScanModeProvider);
+    final lastMode = ref.watch(lastScanModeProvider).value ?? ScanMode.document;
     final bottomInset = _bottomInset;
     return Scaffold(
       body: Stack(
