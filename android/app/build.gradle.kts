@@ -16,6 +16,8 @@ android {
 
     defaultConfig {
         applicationId = "com.bnwise.cleanleaf"
+        // Probe/bench builds install beside the real app instead of replacing it.
+        if (project.hasProperty("probe")) applicationIdSuffix = ".probe"
         minSdk = 24
         targetSdk = 36
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION

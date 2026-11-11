@@ -1,7 +1,9 @@
 import 'package:cleanleaf/core/storage/storage_providers.dart';
 import 'package:cleanleaf/core/theme/app_theme.dart';
 import 'package:cleanleaf/features/capture/domain/scan_mode.dart';
+import 'package:cleanleaf/features/document/presentation/document_screen.dart';
 import 'package:cleanleaf/features/export/data/export_providers.dart';
+import 'package:cleanleaf/features/export/domain/convert_format.dart';
 import 'package:cleanleaf/features/home/presentation/home_screen.dart';
 import 'package:cleanleaf/features/library/data/library_providers.dart';
 import 'package:cleanleaf/features/library/presentation/document_card.dart';
@@ -17,6 +19,7 @@ import '../library/presentation/fakes.dart';
 void main() {
   late FakeDocumentRepository documents;
   late List<String> shared;
+  late List<String> sharedJpg;
 
   Future<void> pumpHome(
     WidgetTester tester, [
@@ -28,9 +31,15 @@ void main() {
     addTearDown(tester.view.reset);
     documents = repo ?? FakeDocumentRepository();
     shared = [];
+    sharedJpg = [];
     final router = GoRouter(
       routes: [
         GoRoute(path: '/', builder: (_, _) => const HomeScreen()),
+        GoRoute(
+          path: '/document/:docId',
+          builder: (_, state) =>
+              DocumentScreen(documentId: state.pathParameters['docId']!),
+        ),
         GoRoute(
           path: '/capture',
           builder: (_, state) =>
@@ -54,6 +63,9 @@ void main() {
           ),
           shareDocumentPdfProvider.overrideWithValue(
             (id, {onProgress}) async => shared.add(id),
+          ),
+          shareDocumentJpgProvider.overrideWithValue(
+            (id) async => sharedJpg.add(id),
           ),
         ],
         child: ShadApp.router(theme: AppTheme.light, routerConfig: router),
@@ -94,21 +106,30 @@ void main() {
   }
 
   group('home', () {
-    testWidgets('empty library shows hints and disables export', (
+    testWidgets('empty library shows hints and disables edit and convert', (
       tester,
     ) async {
       await pumpHome(tester);
       expect(find.text('Your scans will show up here.'), findsOneWidget);
-      expect(find.text('0 documents'), findsOneWidget);
-      expect(find.text('Scan something first'), findsOneWidget);
+      expect(find.text('Scan something first'), findsNWidgets(2));
 
-      await tapAndSettle(tester, find.byKey(const ValueKey('tile-export')));
-      expect(find.text('Export PDF'), findsNothing);
+      await tapAndSettle(tester, find.byKey(const ValueKey('tile-edit')));
+      await tapAndSettle(tester, find.byKey(const ValueKey('tile-convert')));
+      expect(find.byType(ShadSheet), findsNothing);
+    });
+
+    testWidgets('tiles are scan, import, edit and convert', (tester) async {
+      await pumpHome(tester, twoDocs());
+      for (final title in ['Scan', 'Import', 'Edit', 'Convert']) {
+        expect(find.text(title), findsOneWidget, reason: title);
+      }
+      expect(find.text('Crop, filters, rotate'), findsOneWidget);
+      expect(find.text('PDF, JPG'), findsOneWidget);
+      expect(find.byKey(const ValueKey('tile-files')), findsNothing);
     });
 
     testWidgets('recent strip lists documents newest first', (tester) async {
       await pumpHome(tester, twoDocs());
-      expect(find.text('2 documents'), findsOneWidget);
       expect(find.text('2 pages · 11 Nov 2026'), findsOneWidget);
       expect(find.text('1 page · 11 Nov 2026'), findsOneWidget);
       expect(
@@ -200,25 +221,61 @@ void main() {
       expect(find.textContaining('capture:'), findsNothing);
     });
 
-    testWidgets('export picks a document and shares its PDF', (tester) async {
-      await pumpHome(tester, twoDocs());
-      await tapAndSettle(tester, find.byKey(const ValueKey('tile-export')));
-      expect(find.text('Export PDF'), findsOneWidget);
+    Future<void> pickInSheet(WidgetTester tester, String title) => tapAndSettle(
+      tester,
+      find.descendant(of: find.byType(ShadSheet), matching: find.text(title)),
+    );
 
-      await tapAndSettle(
-        tester,
-        find.descendant(
-          of: find.byType(ShadSheet),
-          matching: find.text('Passport'),
-        ),
-      );
+    testWidgets('convert picks a document and shares its PDF', (tester) async {
+      await pumpHome(tester, twoDocs());
+      await tapAndSettle(tester, find.byKey(const ValueKey('tile-convert')));
+      expect(find.text('Pick a document to convert.'), findsOneWidget);
+
+      await pickInSheet(tester, 'Passport');
+      await tapAndSettle(tester, find.byKey(const ValueKey(ConvertFormat.pdf)));
       expect(shared, ['b']);
+      expect(sharedJpg, isEmpty);
     });
 
-    testWidgets('files tile switches to the files tab', (tester) async {
+    testWidgets('convert to JPG shares the page images', (tester) async {
       await pumpHome(tester, twoDocs());
-      await tapAndSettle(tester, find.byKey(const ValueKey('tile-files')));
-      expect(find.text('2 DOCUMENTS'), findsOneWidget);
+      await tapAndSettle(tester, find.byKey(const ValueKey('tile-convert')));
+      await pickInSheet(tester, 'Receipts');
+      await tapAndSettle(tester, find.byKey(const ValueKey(ConvertFormat.jpg)));
+      expect(sharedJpg, ['a']);
+      expect(shared, isEmpty);
+    });
+
+    testWidgets('edit picks a document and opens it', (tester) async {
+      await pumpHome(tester, twoDocs());
+      await tapAndSettle(tester, find.byKey(const ValueKey('tile-edit')));
+      expect(find.text('Pick a document to open.'), findsOneWidget);
+
+      await pickInSheet(tester, 'Passport');
+      expect(find.byType(DocumentScreen), findsOneWidget);
+      expect(find.text('1 PAGE · 11 NOV 2026'), findsOneWidget);
+    });
+
+    testWidgets('tapping a recent card opens the document', (tester) async {
+      await pumpHome(tester, twoDocs());
+      await tapAndSettle(tester, find.text('Receipts'));
+      expect(find.text('2 PAGES · 11 NOV 2026'), findsOneWidget);
+    });
+
+    testWidgets('deleting in the document view returns home with undo', (
+      tester,
+    ) async {
+      await pumpHome(tester, twoDocs());
+      await tapAndSettle(tester, find.text('Receipts'));
+      await tapAndSettle(tester, find.bySemanticsLabel('Delete'));
+      expect(find.byType(DocumentScreen), findsNothing);
+      expect(find.text('Receipts'), findsNothing);
+      expect(find.text('Deleted "Receipts"'), findsOneWidget);
+
+      await tapAndSettle(tester, find.text('Undo'));
+      await tester.pump(const Duration(seconds: 6));
+      expect(find.text('Receipts'), findsOneWidget);
+      expect(documents.deleted, isEmpty);
     });
 
     testWidgets('opens settings with the row list', (tester) async {
@@ -239,6 +296,13 @@ void main() {
       await pumpHome(tester);
       await openFiles(tester);
       expect(find.text('No documents yet'), findsOneWidget);
+    });
+
+    testWidgets('tapping a card opens the document', (tester) async {
+      await pumpHome(tester, twoDocs());
+      await openFiles(tester);
+      await tapAndSettle(tester, find.text('Passport'));
+      expect(find.byType(DocumentScreen), findsOneWidget);
     });
 
     testWidgets('toggles to list layout', (tester) async {
@@ -293,7 +357,7 @@ void main() {
       await openMenu(tester, 'Receipts', 'Delete');
       await tapAndSettle(tester, find.bySemanticsLabel('Home'));
       expect(find.text('Receipts'), findsNothing);
-      expect(find.text('1 document'), findsOneWidget);
+      expect(find.text('Passport'), findsOneWidget);
 
       await tapAndSettle(tester, find.text('Undo'));
       await tester.pump(const Duration(seconds: 6));
