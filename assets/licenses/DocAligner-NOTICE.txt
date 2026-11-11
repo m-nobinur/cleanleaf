@@ -1,0 +1,8 @@
+DocAligner document corner detection model weights (DocsaidLab)
+Source: https://github.com/DocsaidLab/DocAligner
+License: Apache License 2.0 (full text below). The author confirmed in
+https://github.com/DocsaidLab/DocAligner/issues/13 that the pretrained weights
+are released under the same terms as the repository.
+Modified: the weights are converted from the official ONNX release 1.1.1
+(lcnet100 heatmap model, 256 x 256 input) to TensorFlow Lite format (fp16,
+zero padding). The conversion does not change the license.

@@ -1,0 +1,4 @@
+KleidiCV (Arm Limited), optimized image kernels for Arm CPUs
+Source: https://gitlab.arm.com/kleidi/kleidicv
+License: Apache License 2.0 (full text below)
+Use: fetched by OpenCV's build and linked into the arm64 build of libclvision.
