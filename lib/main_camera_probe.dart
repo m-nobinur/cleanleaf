@@ -54,6 +54,11 @@ class _Probe {
       return 'capture after stop: ${await _errorCode(host.capture)}';
     });
     await _step('cycles', _cycles);
+    await _step('hold', () async {
+      final (startMs, firstMs) = await _open();
+      return 'session open start=${startMs}ms firstFrame=${firstMs}ms '
+          '(pause check: press HOME, the camera must close)';
+    });
   }
 
   Future<void> _step(String name, Future<String> Function() body) async {
