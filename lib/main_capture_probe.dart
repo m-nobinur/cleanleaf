@@ -59,22 +59,19 @@ class _Photos {
   static Future<_Photos> load() async {
     final dir = await getExternalStorageDirectory();
     if (dir == null) throw StateError('No external files dir');
+    // Reinstalling wipes this dir, so the photos may be pushed after launch.
+    var files = _images(dir);
+    for (var i = 0; files.isEmpty && i < 60; i++) {
+      if (i == 0) _log('waiting for photos in ${dir.path}');
+      await Future<void>.delayed(const Duration(seconds: 2));
+      files = _images(dir);
+    }
+    await Future<void>.delayed(const Duration(seconds: 2)); // let adb finish
+    files = _images(dir);
     final labelsFile = File('${dir.path}/labels.json');
     final labels = labelsFile.existsSync()
         ? jsonDecode(labelsFile.readAsStringSync()) as Map<String, dynamic>
         : const <String, dynamic>{};
-    final files =
-        dir
-            .listSync()
-            .whereType<File>()
-            .where(
-              (f) => RegExp(
-                r'\.(jpe?g|png)$',
-                caseSensitive: false,
-              ).hasMatch(f.path),
-            )
-            .toList()
-          ..sort((a, b) => a.path.compareTo(b.path));
     if (files.isEmpty) throw StateError('No photos in ${dir.path}');
     final photos = [
       for (final f in files)
@@ -83,6 +80,19 @@ class _Photos {
     _log('photos n=${photos.length} labelled=${labels.length} dir=${dir.path}');
     return _Photos(photos);
   }
+
+  static List<File> _images(Directory dir) =>
+      dir
+          .listSync()
+          .whereType<File>()
+          .where(
+            (f) => RegExp(
+              r'\.(jpe?g|png)$',
+              caseSensitive: false,
+            ).hasMatch(f.path),
+          )
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
 
   static Quad? _quad(Object? label) {
     if (label is! Map || label['corners'] is! List) return null;
