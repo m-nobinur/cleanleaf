@@ -88,7 +88,9 @@ Future<Map<String, ScannedCode>> _bench(
   Map<String, String?> expected,
 ) async {
   final decoded = <String, ScannedCode>{};
+  _log('clvision opencv=${openCvVersion()}');
   for (final name in expected.keys.toList()..sort()) {
+    _log('bench start $name');
     final encoded = File('${dir.path}/$name').readAsBytesSync();
     final luma = await _sensorLuma(encoded);
     final formats = name.startsWith('qr') || name.startsWith('no_')
