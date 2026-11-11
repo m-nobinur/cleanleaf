@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+  <meta name='ocr-system' content='tesseract 5.5.3' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word ocrp_dir ocrp_lang ocrp_wconf'/>
+ </head>
+ <body>
+  <div class='ocr_page' id='page_1' title='image "mixed.png"; bbox 0 0 1400 520; ppageno 0; scan_res 70 70'>
+   <div class='ocr_carea' id='block_1_1' title="bbox 61 58 793 189">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 61 58 793 189">
+     <span class='ocr_line' id='line_1_1' title="bbox 64 58 793 99; baseline 0 -9; x_size 41; x_descenders 9; x_ascenders 8">
+      <span class='ocrx_word' id='word_1_1' title='bbox 64 58 198 90; x_wconf 96'>Invoice</span>
+      <span class='ocrx_word' id='word_1_2' title='bbox 212 58 293 90; x_wconf 95'>#42:</span>
+      <span class='ocrx_word' id='word_1_3' title='bbox 310 58 389 90; x_wconf 93'>Tom</span>
+      <span class='ocrx_word' id='word_1_4' title='bbox 406 58 432 90; x_wconf 93'>&amp;</span>
+      <span class='ocrx_word' id='word_1_5' title='bbox 447 58 542 99; x_wconf 93'>Jerry</span>
+      <span class='ocrx_word' id='word_1_6' title='bbox 558 58 665 90; x_wconf 88'>&lt;Ltd&gt;</span>
+      <span class='ocrx_word' id='word_1_7' title='bbox 682 58 793 99; x_wconf 76'>&quot;paid&quot;</span>
+     </span>
+     <span class='ocr_line' id='line_1_2' title="bbox 61 148 667 189; baseline 0 -9; x_size 39; x_descenders 7; x_ascenders 8">
+      <span class='ocrx_word' id='word_1_8' title='bbox 61 148 150 180; x_wconf 95'>Total</span>
+      <span class='ocrx_word' id='word_1_9' title='bbox 170 148 273 187; x_wconf 96'>1,250</span>
+      <span class='ocrx_word' id='word_1_10' title='bbox 288 148 388 187; x_wconf 96'>Taka,</span>
+      <span class='ocrx_word' id='word_1_11' title='bbox 407 148 454 180; x_wconf 96'>it&#39;s</span>
+      <span class='ocrx_word' id='word_1_12' title='bbox 470 148 541 180; x_wconf 96'>due</span>
+      <span class='ocrx_word' id='word_1_13' title='bbox 555 148 667 189; x_wconf 95'>today.</span>
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_2' title="bbox 60 244 803 292">
+    <p class='ocr_par' id='par_1_2' lang='ben' title="bbox 60 244 803 292">
+     <span class='ocr_line' id='line_1_3' title="bbox 60 244 803 292; baseline 0 -6; x_size 40.589745; x_descenders 10.147436; x_ascenders 10.147436">
+      <span class='ocrx_word' id='word_1_14' title='bbox 60 256 165 286; x_wconf 96'>আমার</span>
+      <span class='ocrx_word' id='word_1_15' title='bbox 176 256 282 286; x_wconf 96'>সোনার</span>
+      <span class='ocrx_word' id='word_1_16' title='bbox 292 256 397 292; x_wconf 95'>বাংলা,</span>
+      <span class='ocrx_word' id='word_1_17' title='bbox 444 244 490 286; x_wconf 96'>আমি</span>
+      <span class='ocrx_word' id='word_1_18' title='bbox 501 256 617 286; x_wconf 93'>তোমায়</span>
+      <span class='ocrx_word' id='word_1_19' title='bbox 627 244 803 286; x_wconf 91'>ভালোবাসি।</span>
+     </span>
+    </p>
+   </div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 60 352 692 401">
+    <p class='ocr_par' id='par_1_3' lang='ben' title="bbox 60 352 692 401">
+     <span class='ocr_line' id='line_1_4' title="bbox 60 352 692 401; baseline 0 -5; x_size 47.409836; x_descenders 5.4098358; x_ascenders 12">
+      <span class='ocrx_word' id='word_1_20' title='bbox 60 366 138 396; x_wconf 96'>ঢাকা</span>
+      <span class='ocrx_word' id='word_1_21' title='bbox 147 354 344 401; x_wconf 96'>বিশ্ববিদ্যালয়</span>
+      <span class='ocrx_word' id='word_1_22' title='bbox 356 366 453 396; x_wconf 95'>২০২৪</span>
+      <span class='ocrx_word' id='word_1_23' title='bbox 467 366 569 396; x_wconf 96'>সালের</span>
+      <span class='ocrx_word' id='word_1_24' title='bbox 579 352 692 396; x_wconf 95'>রিপোর্ট</span>
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>

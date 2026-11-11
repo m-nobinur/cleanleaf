@@ -80,6 +80,8 @@ flutter:
   assets:
     - assets/licenses/
     - assets/models/lc100_fp16_padzero.tflite
+    # decisions.md D-13a: tessdata_best ben + eng, copied to app storage by the Kotlin ocr/ engine.
+    - assets/tessdata/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

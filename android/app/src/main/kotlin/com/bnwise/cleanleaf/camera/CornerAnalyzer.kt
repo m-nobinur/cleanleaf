@@ -5,8 +5,12 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.bnwise.cleanleaf.vision.ClVision
 
-/** Detects the page in each analysis frame inside clvision; only corners leave this class. */
+/**
+ * Detects the page in each analysis frame inside clvision, or reads a code while [codeFormats] is non-zero
+ * (detection is skipped then); only corners or decoded text leave this class.
+ */
 class CornerAnalyzer(
+    private val codeFormats: () -> Int,
     private val onFrame: (CornerFrame) -> Unit,
 ) : ImageAnalysis.Analyzer {
     private val out = FloatArray(9)
@@ -14,7 +18,34 @@ class CornerAnalyzer(
     private var loggedStatus = false
 
     override fun analyze(image: ImageProxy) {
-        onFrame(image.use(::detect))
+        val formats = codeFormats()
+        onFrame(image.use { if (formats == 0) detect(it) else decode(it, formats) })
+    }
+
+    private fun decode(
+        image: ImageProxy,
+        formats: Int,
+    ): CornerFrame {
+        val y = image.planes[0]
+        val rotation = image.imageInfo.rotationDegrees
+        val bytes = ClVision.decodeCodes(y.buffer, image.width, image.height, y.rowStride, rotation, formats)
+        val timestampUs = image.imageInfo.timestamp / 1000
+        stability.update(null, timestampUs)
+        return CornerFrame(
+            corners = null,
+            confidence = 0.0,
+            isStable = false,
+            timestampUs = timestampUs,
+            code = bytes?.let(::decodedCode),
+        )
+    }
+
+    private fun decodedCode(bytes: ByteArray): DecodedCode {
+        val split = bytes.indexOf(0.toByte())
+        return DecodedCode(
+            format = String(bytes, 0, split, Charsets.US_ASCII),
+            text = String(bytes, split + 1, bytes.size - split - 1, Charsets.UTF_8),
+        )
     }
 
     private fun detect(image: ImageProxy): CornerFrame {

@@ -12,7 +12,8 @@ import 'scan_engine_providers.dart';
 var _googleScanRunning = false;
 
 /// The Scan button: the one place that routes by the selected engine.
-/// [mode] only applies to the Cleanleaf engine; Google picks its own.
+/// [mode] only applies to the Cleanleaf engine; Google picks its own, and
+/// code modes always use Cleanleaf since Google only scans documents.
 Future<void> startScan(
   BuildContext context,
   WidgetRef ref, {
@@ -22,6 +23,10 @@ Future<void> startScan(
   final capture = mode == null ? AppRoutes.capture : AppRoutes.captureIn(mode);
   final engine = await ref.read(scanEngineProvider.future);
   if (!context.mounted) return;
+  if (mode?.codeFamily != null) {
+    await context.push(capture);
+    return;
+  }
   ScanMetrics.start(engine.name);
   if (engine == ScanEngine.cleanleaf) {
     await context.push(capture);

@@ -31,4 +31,17 @@ object ClVision {
         rotationDegrees: Int,
         out: FloatArray,
     ): Int
+
+    /**
+     * Reads the first code of [formats] (`clv_code_formats` bits) in an ImageProxy's direct luma plane. Returns
+     * the format name, a 0 byte, then the UTF-8 text; null when there is none.
+     */
+    @JvmStatic external fun decodeCodes(
+        y: ByteBuffer,
+        width: Int,
+        height: Int,
+        yRowStride: Int,
+        rotationDegrees: Int,
+        formats: Int,
+    ): ByteArray?
 }

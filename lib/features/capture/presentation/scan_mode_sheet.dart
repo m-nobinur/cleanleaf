@@ -112,10 +112,7 @@ class ScanModeSheet extends StatelessWidget {
                 icon: mode.icon,
                 title: mode.label,
                 caption: mode.caption,
-                badge: mode.isAvailable ? null : 'SOON',
-                onTap: mode.isAvailable
-                    ? () => Navigator.of(context).pop(mode)
-                    : null,
+                onTap: () => Navigator.of(context).pop(mode),
               ),
           ],
         ),

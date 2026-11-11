@@ -16,6 +16,21 @@ endif()
 
 add_library(clvision SHARED ${sources})
 
+# zxing-cpp readers (decisions.md D-47), static and hidden inside clvision. Its core needs C++20.
+set(ZXING_SOURCE_DIR "" CACHE PATH "zxing-cpp source tree")
+set(BUILD_SHARED_LIBS OFF)
+set(ZXING_READERS ON)
+set(ZXING_WRITERS OFF)
+add_subdirectory(${ZXING_SOURCE_DIR}/core zxing EXCLUDE_FROM_ALL)
+set_target_properties(ZXing PROPERTIES
+  CXX_STANDARD 20
+  POSITION_INDEPENDENT_CODE ON
+  C_VISIBILITY_PRESET hidden
+  CXX_VISIBILITY_PRESET hidden
+  VISIBILITY_INLINES_HIDDEN ON)
+target_compile_options(ZXing PRIVATE -ffunction-sections -fdata-sections)
+target_link_libraries(clvision PRIVATE ZXing::ZXing)
+
 # LiteRT C API (decisions.md D-11): headers from the LiteRT AAR plus the vendored
 # XNNPACK delegate header; the hook supplies the per-platform library.
 set(LITERT_INCLUDE_DIR "" CACHE PATH "LiteRT AAR headers directory")

@@ -53,13 +53,23 @@ class CameraSession {
   bool handlesCropAndRotation;
 }
 
-/// Detection result for one analysis frame. Pixels never cross the bridge.
+/// A QR code or barcode read from an analysis frame.
+class DecodedCode {
+  DecodedCode({required this.format, required this.text});
+
+  /// zxing-cpp's name, e.g. "QR Code", "EAN-13".
+  String format;
+  String text;
+}
+
+/// Result for one analysis frame. Pixels never cross the bridge.
 class CornerFrame {
   CornerFrame({
     required this.corners,
     required this.confidence,
     required this.isStable,
     required this.timestampUs,
+    this.code,
   });
 
   /// TL, TR, BR, BL (x, y) normalized to the upright frame; null when no page.
@@ -67,6 +77,9 @@ class CornerFrame {
   double confidence;
   bool isStable;
   int timestampUs;
+
+  /// Set only while reading codes (see `setCodeFormats`).
+  DecodedCode? code;
 }
 
 @HostApi()
@@ -94,6 +107,13 @@ abstract class CameraHostApi {
   /// [x] and [y] are normalized preview coordinates; true when focus locked.
   @async
   bool focusAt(double x, double y);
+
+  /// `clv_code_formats` bits to read codes instead of detecting pages; 0
+  /// detects pages. Kept across sessions.
+  void setCodeFormats(int formats);
+
+  /// Opens an http(s) [url] in another app; false when nothing can.
+  bool openUrl(String url);
 }
 
 @EventChannelApi()

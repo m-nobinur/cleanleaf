@@ -1,5 +1,7 @@
 import 'package:cleanleaf/core/geometry/quad.dart';
 
+import 'scan_mode.dart';
+
 enum CameraPermission { granted, denied, permanentlyDenied }
 
 enum CameraFailure implements Exception {
@@ -30,6 +32,19 @@ typedef CameraPreview = ({
 /// Page detection for one live frame; [quad] is null when no page is found.
 typedef LiveDetection = ({Quad? quad, double confidence, bool isStable});
 
+/// A QR code or barcode read from a live frame or a photo; never stored
+/// (D-47). [format] is a display name such as "QR Code" or "EAN-13".
+typedef ScannedCode = ({String format, String text});
+
+extension ScannedCodeLink on ScannedCode {
+  /// The text as an http(s) link, or null; only these get an Open action.
+  Uri? get webLink {
+    final uri = Uri.tryParse(text.trim());
+    final web = uri != null && (uri.isScheme('http') || uri.isScheme('https'));
+    return web && uri.host.isNotEmpty ? uri : null;
+  }
+}
+
 /// The back camera, with page detection running on its live frames.
 ///
 /// Frames, corners and stills are oriented to the device's natural (portrait)
@@ -54,4 +69,14 @@ abstract interface class DocumentCamera {
 
   /// Errors on this stream are [CameraFailure]s raised while running.
   Stream<LiveDetection> get detections;
+
+  /// Reads [family] codes on live frames instead of detecting pages; null
+  /// goes back to pages. Holds across [start] calls.
+  Future<void> readCodes(CodeFamily? family);
+
+  /// Codes found while [readCodes] is on, one event per frame that has one.
+  Stream<ScannedCode> get codes;
+
+  /// Opens an http(s) link in another app; false when nothing can.
+  Future<bool> openLink(Uri link);
 }
