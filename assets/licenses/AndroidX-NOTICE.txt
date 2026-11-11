@@ -1,0 +1,6 @@
+AndroidX CameraX 1.6.2 (camera core, camera2, lifecycle),
+AndroidX concurrent-futures-ktx 1.1.0, Kotlin kotlinx-coroutines-android 1.10.2,
+and their transitive AndroidX and Kotlin libraries
+Sources: https://developer.android.com/jetpack/androidx/releases/camera
+         https://github.com/Kotlin/kotlinx.coroutines
+License: Apache License 2.0 (full text below)

@@ -1,0 +1,4 @@
+LiteRT 1.4.2 (Google's on-device runtime, formerly TensorFlow Lite)
+Source: https://github.com/google-ai-edge/LiteRT
+License: Apache License 2.0 (full text below)
+Use: runs the document corner detection model inside the camera and capture pipeline.
