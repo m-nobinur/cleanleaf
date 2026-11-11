@@ -18,7 +18,7 @@ import 'features/capture/data/capture_providers.dart';
 import 'features/capture/data/pigeon_document_camera.dart';
 import 'features/capture/domain/document_camera.dart';
 
-// Device probe for the camera screen (T-008): run with -t, grant CAMERA, push
+// Device probe for the camera screen (T-008, T-027): run with -t, grant CAMERA, push
 // real photos (+ optional labels.json) to the app's external files dir, and
 // read `adb logcat -s flutter:I` until `CLBENCH DONE`. The live preview and
 // event cadence are the real camera's, but the outline is the photo's
@@ -205,9 +205,10 @@ class _Script {
     await _pause(2000);
     await _scan('document', photos.pick(receipt: false), measureUi: true);
     await _scan('receipt', photos.pick(receipt: true));
-    await _open('idCard');
-    camera.show = _Show.nothing;
-    await _shot('camera_idcard');
+    for (final mode in ['idCard', 'passport', 'book']) {
+      await _open(mode);
+      await _shot('camera_${mode.toLowerCase()}');
+    }
     await _lifecycle();
   }
 
