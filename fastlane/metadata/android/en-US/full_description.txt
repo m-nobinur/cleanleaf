@@ -1,0 +1,8 @@
+Cleanleaf is a document scanner that keeps everything on your phone.
+
+- Scan pages with the camera and adjust the corners before saving.
+- Edits never touch the original photo, so you can change them later.
+- Works offline. There is no account, no sign-in and no analytics.
+- Documents are stored on your phone and are never uploaded.
+
+English and Bangla text recognition (OCR) is planned for a later release.
