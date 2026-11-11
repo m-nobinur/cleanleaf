@@ -15,7 +15,7 @@ const Quad fullFrame = (
 );
 
 // Paths are relative to the file store root.
-class Page(
+class DocumentPage(
   final String id, {
   required final String documentId,
   required final int index,
@@ -28,13 +28,13 @@ class Page(
   final String? renderPath,
   final String? thumbPath,
 }) {
-  Page copyWith({
+  DocumentPage copyWith({
     Quad? corners,
     EdgeAnchors? anchors,
     int? rotation,
     PageFilter? filter,
     Map<String, double>? filterParams,
-  }) => Page(
+  }) => DocumentPage(
     id,
     documentId: documentId,
     index: index,

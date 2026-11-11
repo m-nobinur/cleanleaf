@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../../../core/geometry/quad.dart';
 import '../../../core/storage/app_database.dart';
-import '../domain/page.dart';
+import '../domain/document_page.dart';
 
 List<double> _point(Point p) => [p.x, p.y];
 
@@ -36,7 +36,7 @@ Map<String, double> decodeFilterParams(String json) => {
     key: (value! as num).toDouble(),
 };
 
-Page pageFromRow(PageRow r) => Page(
+DocumentPage pageFromRow(PageRow r) => DocumentPage(
   r.id,
   documentId: r.documentId,
   index: r.pageIndex,

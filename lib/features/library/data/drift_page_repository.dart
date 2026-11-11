@@ -4,7 +4,7 @@ import '../../../core/geometry/quad.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/storage/file_store.dart';
 import '../../../core/storage/ids.dart';
-import '../domain/page.dart';
+import '../domain/document_page.dart';
 import '../domain/page_repository.dart';
 import 'page_mapper.dart';
 
@@ -22,17 +22,17 @@ class DriftPageRepository implements PageRepository {
         ..orderBy([(t) => OrderingTerm.asc(t.pageIndex)]);
 
   @override
-  Stream<List<Page>> watchByDocument(String documentId) =>
+  Stream<List<DocumentPage>> watchByDocument(String documentId) =>
       _byDocument(documentId)
           .watch()
           .map((rows) => rows.map(pageFromRow).toList());
 
   @override
-  Future<List<Page>> getByDocument(String documentId) async =>
+  Future<List<DocumentPage>> getByDocument(String documentId) async =>
       (await _byDocument(documentId).get()).map(pageFromRow).toList();
 
   @override
-  Future<Page> add(
+  Future<DocumentPage> add(
     String documentId, {
     required Stream<List<int>> original,
     required Quad corners,
@@ -47,7 +47,7 @@ class DriftPageRepository implements PageRepository {
     try {
       return await _db.transaction(() async {
         final count = await _countPages(documentId);
-        final page = Page(
+        final page = DocumentPage(
           id,
           documentId: documentId,
           index: count,
@@ -79,7 +79,7 @@ class DriftPageRepository implements PageRepository {
   }
 
   @override
-  Future<void> updateEdits(Page page) => _db.transaction(() async {
+  Future<void> updateEdits(DocumentPage page) => _db.transaction(() async {
     await (_db.update(_db.pages)..where((t) => t.id.equals(page.id))).write(
       PagesCompanion(
         corners: Value(encodeCorners(page.corners)),

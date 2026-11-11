@@ -4,7 +4,7 @@ import 'package:cleanleaf/core/storage/app_database.dart';
 import 'package:cleanleaf/core/storage/file_store.dart';
 import 'package:cleanleaf/features/library/data/drift_document_repository.dart';
 import 'package:cleanleaf/features/library/data/drift_page_repository.dart';
-import 'package:cleanleaf/features/library/domain/page.dart';
+import 'package:cleanleaf/features/library/domain/document_page.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -29,7 +29,7 @@ void main() {
     await root.delete(recursive: true);
   });
 
-  Future<Page> addPage(String docId) =>
+  Future<DocumentPage> addPage(String docId) =>
       pages.add(docId, original: Stream.value([1, 2]), corners: fullFrame);
 
   Future<List<String>> pageIds(String docId) async =>
