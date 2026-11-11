@@ -10,6 +10,11 @@ object ClVision {
 
     @JvmStatic external fun opencvVersion(): String
 
+    /** [model] is a direct buffer with the .tflite bytes; returns the `clv_status`. No-op once loaded. */
+    @JvmStatic external fun loadModel(model: ByteBuffer): Int
+
+    @JvmStatic external fun isModelLoaded(): Boolean
+
     /**
      * Planes are an ImageProxy's direct YUV_420_888 buffers. On status 0 (`CLV_OK`), [out] holds TL, TR, BR, BL
      * normalized to the upright frame, then the confidence (9 floats).

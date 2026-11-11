@@ -13,6 +13,7 @@ abstract final class ClvStatus {
   static const decodeFailed = -3;
   static const encodeFailed = -4;
   static const internalError = -5;
+  static const modelNotLoaded = -6;
 }
 
 final class ClvYuvFrame extends Struct {
@@ -106,4 +107,18 @@ external int clvThumbnail(
 @Native<Void Function(Pointer<Void>)>(symbol: 'clv_free', isLeaf: true)
 external void clvFree(Pointer<Void> buffer);
 
+@Native<Int32 Function(Pointer<Uint8>, Int32)>(symbol: 'clv_model_load')
+external int clvModelLoad(Pointer<Uint8> model, int length);
+
+@Native<Int32 Function()>(symbol: 'clv_model_loaded', isLeaf: true)
+external int clvModelLoaded();
+
+@Native<Int32 Function(Pointer<Float>, Pointer<Float>)>(symbol: 'clv_model_run')
+external int clvModelRun(Pointer<Float> input, Pointer<Float> heatmapsOut);
+
 String openCvVersion() => clvOpencvVersion().toDartString();
+
+/// DocAligner LC100 (decisions.md D-11); `clv_model_load` takes its bytes.
+const docAlignerAsset = 'assets/models/lc100_fp16_padzero.tflite';
+const modelInputSize = 256;
+const modelHeatmapSize = 128;

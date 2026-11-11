@@ -90,4 +90,23 @@ class VisionHostApi {
     );
     return pigeonVar_replyValue! as String;
   }
+
+  /// Whether libclvision as seen from Kotlin holds the DocAligner model.
+  Future<bool> isModelLoaded() async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.cleanleaf.VisionHostApi.isModelLoaded$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
+    return pigeonVar_replyValue! as bool;
+  }
 }
