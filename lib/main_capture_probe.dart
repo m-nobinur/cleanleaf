@@ -14,22 +14,41 @@ import 'app.dart';
 import 'core/geometry/quad.dart';
 import 'core/platform/clvision.dart';
 import 'core/router/app_router.dart';
+import 'core/router/app_routes.dart';
 import 'features/capture/data/capture_providers.dart';
 import 'features/capture/data/pigeon_document_camera.dart';
 import 'features/capture/domain/document_camera.dart';
+import 'features/capture/presentation/auto_capture_setting.dart';
+import 'features/editor/presentation/editor_providers.dart';
+import 'features/gallery_import/data/detect_still_quad.dart';
+import 'features/gallery_import/data/gallery_import.dart';
+import 'features/gallery_import/presentation/import_from_gallery.dart';
+import 'features/library/data/library_providers.dart';
 
 // Device probe for the camera screen (T-008, T-027): run with -t, grant CAMERA, push
 // real photos (+ optional labels.json) to the app's external files dir, and
 // read `adb logcat -s flutter:I` until `CLBENCH DONE`. The live preview and
 // event cadence are the real camera's, but the outline is the photo's
 // labelled quad and each shot returns that photo instead of the still, so
-// confirm shows a real page (re-detected by the model, else the label).
+// the crop review shows a real page (re-detected by the model, else the
+// label). An import step feeds a photo through the gallery import.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final photos = await _Photos.load();
   final camera = _ProbeCamera(PigeonDocumentCamera(), photos);
   final container = ProviderContainer(
-    overrides: [documentCameraProvider.overrideWithValue(camera)],
+    overrides: [
+      documentCameraProvider.overrideWithValue(camera),
+      // The system picker needs taps; import the current photo instead.
+      galleryImportProvider.overrideWith(
+        (ref) => GalleryImport(
+          pick: () async => camera.photo.file.path,
+          detect: detectStillQuad,
+          documents: ref.watch(documentRepositoryProvider),
+          pages: ref.watch(pageRepositoryProvider),
+        ),
+      ),
+    ],
   );
   runApp(
     UncontrolledProviderScope(
@@ -39,7 +58,13 @@ Future<void> main() async {
   );
   // Still re-detection on the photos uses the real model, as in main.dart.
   unawaited(loadDocAligner());
-  await _Script(container.read(routerProvider), camera, photos).run();
+  // Earlier probe runs may have left Auto off in this package's settings.
+  final auto = container.read(autoCaptureSettingProvider.notifier);
+  _log(
+    'auto_capture_was=${await container.read(autoCaptureSettingProvider.future)}',
+  );
+  await auto.set(true);
+  await _Script(container, camera, photos).run();
   _log('DONE');
 }
 
@@ -192,8 +217,10 @@ class _ProbeCamera implements DocumentCamera {
 }
 
 class _Script {
-  _Script(this.router, this.camera, this.photos);
+  _Script(this.container, this.camera, this.photos)
+    : router = container.read(routerProvider);
 
+  final ProviderContainer container;
   final GoRouter router;
   final _ProbeCamera camera;
   final _Photos photos;
@@ -210,6 +237,8 @@ class _Script {
       await _shot('camera_${mode.toLowerCase()}');
     }
     await _lifecycle();
+    // Last, so the review stays open for theme and drag shots after DONE.
+    await _import(photos.pick(receipt: false));
   }
 
   Future<void> _open(String mode) async {
@@ -243,7 +272,7 @@ class _Script {
     }
     camera.show = _Show.resting;
     final shutter = clock.elapsedMilliseconds;
-    while (!_location.startsWith('/confirm')) {
+    while (!_location.startsWith('/editor')) {
       await _pause(20);
       if (clock.elapsedMilliseconds - shutter > 10000) {
         _log('ERROR no auto-capture within 10 s');
@@ -251,12 +280,44 @@ class _Script {
       }
     }
     _log(
-      'auto_capture_to_confirm_route ms=${clock.elapsedMilliseconds - shutter}',
+      'auto_capture_to_editor_route ms=${clock.elapsedMilliseconds - shutter}',
     );
     camera.show = _Show.nothing;
-    await _shot('confirm_$mode');
+    await _editorReady('auto_capture_to_editor_ready mode=$mode', shutter);
+    await _shot('review_$mode');
     router.pop();
     await _firstEvent('retake mode=$mode', clock.elapsedMilliseconds);
+  }
+
+  Future<void> _import(_Photo photo) async {
+    camera.show = _Show.nothing;
+    router.go('/');
+    await _pause(500);
+    camera.photo = photo;
+    final start = clock.elapsedMilliseconds;
+    final page = await container.read(galleryImportProvider)();
+    unawaited(router.push(AppRoutes.editor(page!.id, fresh: true)));
+    await _editorReady('import_to_editor_ready', start);
+    await _shot('review_import');
+  }
+
+  /// Logs when the review shows its photo: the route is up and the decode the
+  /// crop canvas waits on has finished, plus one painted frame.
+  Future<void> _editorReady(String label, int since) async {
+    while (!_location.startsWith('/editor')) {
+      await _pause(20);
+    }
+    final pageId = router.state.pathParameters['pageId']!;
+    final page = await container.read(pageRepositoryProvider).get(pageId);
+    // Listening keeps the auto-dispose provider alive while it decodes.
+    final image = container.listen(
+      pageImageProvider(page!.originalPath).future,
+      (_, _) {},
+    );
+    await image.read();
+    image.close();
+    await SchedulerBinding.instance.endOfFrame;
+    _log('$label ms=${clock.elapsedMilliseconds - since}');
   }
 
   Future<void> _lifecycle() async {
