@@ -34,6 +34,7 @@ def main() -> None:
     ap.add_argument("fixtures")
     ap.add_argument("model")
     ap.add_argument("--json")
+    ap.add_argument("--gray-input", action="store_true", help="feed Y-plane-like gray replicated to 3 channels")
     args = ap.parse_args()
 
     root = Path(args.fixtures)
@@ -46,6 +47,8 @@ def main() -> None:
     post_diff = []
     for fname, lab in sorted(labels.items()):
         bgr = cv2.imread(str(root / fname), cv2.IMREAD_COLOR)
+        if args.gray_input:
+            bgr = cv2.cvtColor(cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR)
         h, w = bgr.shape[:2]
         diag = float(np.hypot(w, h))
         gt = None if lab["corners"] is None else np.array(lab["corners"], np.float64) * [w, h]
