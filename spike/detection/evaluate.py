@@ -29,12 +29,47 @@ def corner_error(pred: np.ndarray, gt: np.ndarray, diag: float) -> tuple[float, 
     return best, strict
 
 
+def print_table(rows: dict, title: str) -> dict:
+    tag_names = sorted({t for r in next(iter(rows.values())) for t in r["tags"]})
+    print(f"\n{title}, tolerance {TOL:.0%} of diagonal, frozen conf threshold {det.CONF_THRESHOLD}")
+    print(f"{'candidate':<16} {'overall':>8} {'strict':>7} {'docs':>7} {'docs@1%':>8} {'no-doc':>7} {'low-con':>8} "
+          f"{'med err':>8} {'p90 err':>8} {'Mac ms':>7}")
+
+    def rate(sel, key="hit"):
+        sel = list(sel)
+        return (sum(r[key] for r in sel) / len(sel), len(sel)) if sel else (float("nan"), 0)
+
+    summary = {}
+    for name, rs in rows.items():
+        ov, _ = rate(rs)
+        st, _ = rate(rs, "hit_strict")
+        dc, _ = rate(r for r in rs if "document" in r["tags"])
+        nd, _ = rate(r for r in rs if "no-document" in r["tags"])
+        lc, _ = rate(r for r in rs if "low-contrast" in r["tags"])
+        errs = [r["err"] for r in rs if r["err"] is not None and r["hit"]]
+        med = float(np.median(errs)) if errs else float("nan")
+        p90 = float(np.percentile(errs, 90)) if errs else float("nan")
+        doc_rows = [r for r in rs if "document" in r["tags"]]
+        d1 = sum(r["err"] is not None and r["err"] <= TOL / 2 for r in doc_rows) / max(1, len(doc_rows))
+        ms = float(np.median([r["ms"] for r in rs]))
+        print(f"{name:<16} {ov:>8.1%} {st:>7.1%} {dc:>7.1%} {d1:>8.1%} {nd:>7.1%} {lc:>8.1%} {med:>8.2%} {p90:>8.2%} {ms:>7.1f}")
+        summary[name] = {"overall": ov, "strict": st, "docs": dc, "docs_1pct": d1, "no_doc": nd, "low_contrast": lc,
+                         "median_err_of_hits": med, "p90_err_of_hits": p90, "mac_ms": ms,
+                         "per_tag": {t: rate(r for r in rs if t in r["tags"]) for t in tag_names}}
+    print("per-tag pass rate (n):")
+    print(f"{'tag':<14}" + "".join(f"{n[:14]:>16}" for n in rows))
+    for t in tag_names:
+        print(f"{t:<14}" + "".join(f"{summary[n]['per_tag'][t][0]:>11.0%} ({summary[n]['per_tag'][t][1]:>3})" for n in rows))
+    return summary
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("fixtures")
     ap.add_argument("model")
     ap.add_argument("--json")
     ap.add_argument("--gray-input", action="store_true", help="feed Y-plane-like gray replicated to 3 channels")
+    ap.add_argument("--subset", default="smartdoc", help="tag/path substring reported separately (in DocAligner's training set)")
     args = ap.parse_args()
 
     root = Path(args.fixtures)
@@ -47,6 +82,9 @@ def main() -> None:
     post_diff = []
     for fname, lab in sorted(labels.items()):
         bgr = cv2.imread(str(root / fname), cv2.IMREAD_COLOR)
+        if bgr is None:
+            print(f"skip {fname}: unreadable")
+            continue
         if args.gray_input:
             bgr = cv2.cvtColor(cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR)
         h, w = bgr.shape[:2]
@@ -78,35 +116,13 @@ def main() -> None:
                                "err": err, "ms": ms,
                                "pred": None if pred is None else (pred / [w, h]).round(5).tolist()})
 
-    tag_names = sorted({t for r in next(iter(rows.values())) for t in r["tags"]})
-    print(f"\n{len(labels)} images, tolerance {TOL:.0%} of diagonal, frozen conf threshold {det.CONF_THRESHOLD}")
-    hdr = (f"{'candidate':<16} {'overall':>8} {'strict':>7} {'docs':>7} {'docs@1%':>8} {'no-doc':>7} {'low-con':>8} "
-           f"{'med err':>8} {'p90 err':>8} {'Mac ms':>7}")
-    print(hdr)
-    summary = {}
-    for name, rs in rows.items():
-        def rate(sel, key="hit"):
-            sel = list(sel)
-            return (sum(r[key] for r in sel) / len(sel), len(sel)) if sel else (float("nan"), 0)
-        ov, _ = rate(rs)
-        st, _ = rate(rs, "hit_strict")
-        dc, _ = rate(r for r in rs if "document" in r["tags"])
-        nd, _ = rate(r for r in rs if "no-document" in r["tags"])
-        lc, nlc = rate(r for r in rs if "low-contrast" in r["tags"])
-        errs = [r["err"] for r in rs if r["err"] is not None and r["hit"]]
-        med = float(np.median(errs)) if errs else float("nan")
-        p90 = float(np.percentile(errs, 90)) if errs else float("nan")
-        doc_rows = [r for r in rs if "document" in r["tags"]]
-        d1 = sum(r["err"] is not None and r["err"] <= TOL / 2 for r in doc_rows) / max(1, len(doc_rows))
-        ms = float(np.median([r["ms"] for r in rs]))
-        print(f"{name:<16} {ov:>8.1%} {st:>7.1%} {dc:>7.1%} {d1:>8.1%} {nd:>7.1%} {lc:>8.1%} {med:>8.2%} {p90:>8.2%} {ms:>7.1f}")
-        summary[name] = {"overall": ov, "strict": st, "docs": dc, "docs_1pct": d1, "no_doc": nd, "low_contrast": lc,
-                         "median_err_of_hits": med, "p90_err_of_hits": p90, "mac_ms": ms,
-                         "per_tag": {t: rate(r for r in rs if t in r["tags"]) for t in tag_names}}
-    print("\nper-tag pass rate (n):")
-    print(f"{'tag':<14}" + "".join(f"{n[:14]:>16}" for n in rows))
-    for t in tag_names:
-        print(f"{t:<14}" + "".join(f"{summary[n]['per_tag'][t][0]:>11.0%} ({summary[n]['per_tag'][t][1]:>2})" for n in rows))
+    summary = print_table(rows, f"{len(labels)} images")
+    in_subset = lambda r: args.subset in r["file"].lower() or any(args.subset in t.lower() for t in r["tags"])
+    n_sub = sum(map(in_subset, next(iter(rows.values()))))
+    if 0 < n_sub < len(labels):  # e.g. SmartDoc frames are in DocAligner's training set: report apart
+        for title, keep in ((f"only '{args.subset}'", in_subset), (f"without '{args.subset}'", lambda r: not in_subset(r))):
+            sub = {name: [r for r in rs if keep(r)] for name, rs in rows.items()}
+            summary[title] = print_table(sub, f"{len(next(iter(sub.values())))} images, {title}")
 
     docs = np.array([c[1] for c in conf if c[0]])
     nodocs = np.array([c[1] for c in conf if not c[0]])
