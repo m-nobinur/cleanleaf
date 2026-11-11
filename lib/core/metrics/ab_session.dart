@@ -11,7 +11,8 @@ class AbSession {
   AbSession(this._dir, {DateTime Function()? clock})
     : _now = clock ?? DateTime.now;
 
-  static const enabled = bool.fromEnvironment('CLEANLEAF_AB');
+  // String, not bool.fromEnvironment: that is true only for the value 'true'.
+  static const enabled = String.fromEnvironment('CLEANLEAF_AB') == '1';
 
   /// Set once in `main` when [enabled].
   static AbSession? current;

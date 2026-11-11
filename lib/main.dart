@@ -20,6 +20,7 @@ void main() {
       ),
     );
     debugPrint('CLMETRIC ab_session $name');
+    AbSession.current!.event('app_start', {});
   }
   runApp(const ProviderScope(child: CleanleafApp()));
 }
