@@ -206,16 +206,23 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets('QR code is disabled and close dismisses the sheet', (
+    testWidgets('QR code opens the camera even with the Google engine', (
       tester,
     ) async {
-      await pumpHome(tester);
+      final settings = MemorySettingsStore();
+      await settings.write('scanEngine', 'google');
+      await pumpHome(tester, null, settings);
       await tapAndSettle(tester, find.byKey(const ValueKey('tile-scan')));
       final qr = find.byKey(const ValueKey(ScanMode.qrCode));
       await tester.ensureVisible(qr);
       await tapAndSettle(tester, qr);
-      expect(find.text('QR code'), findsOneWidget);
+      expect(find.text('capture:qrCode'), findsOneWidget);
+    });
 
+    testWidgets('close dismisses the scan sheet', (tester) async {
+      await pumpHome(tester);
+      await tapAndSettle(tester, find.byKey(const ValueKey('tile-scan')));
+      expect(find.text('QR code'), findsOneWidget);
       await tapAndSettle(tester, find.bySemanticsLabel('Close'));
       expect(find.text('QR code'), findsNothing);
       expect(find.textContaining('capture:'), findsNothing);

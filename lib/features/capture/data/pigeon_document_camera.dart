@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 
 import '../../../core/geometry/quad.dart';
 import '../../../core/platform/camera_api.g.dart';
+import '../../../core/platform/clvision.dart' show ClvCodes;
 import '../domain/document_camera.dart';
+import '../domain/scan_mode.dart';
 
 /// [DocumentCamera] over the Kotlin CameraX module (`camera/CameraHost.kt`).
 /// Its `FlutterError` codes are [CameraFailure] names.
@@ -16,9 +18,12 @@ class PigeonDocumentCamera implements DocumentCamera {
   final CameraHostApi _host;
   final Stream<CornerFrame> _frames;
 
-  // One shared stream: a second EventChannel listener would replace the first.
+  // One shared subscription: a second EventChannel listener would replace the
+  // first.
+  late final Stream<CornerFrame> _shared = _frames.asBroadcastStream();
+
   @override
-  late final Stream<LiveDetection> detections = _frames
+  late final Stream<LiveDetection> detections = _shared
       .map(_detection)
       .transform(
         StreamTransformer.fromHandlers(
@@ -26,6 +31,25 @@ class PigeonDocumentCamera implements DocumentCamera {
               sink.addError(_failure(error), stack),
         ),
       );
+
+  // Errors reach listeners through [detections].
+  @override
+  late final Stream<ScannedCode> codes = _shared
+      .handleError((Object _) {})
+      .where((frame) => frame.code != null)
+      .map((frame) => (format: frame.code!.format, text: frame.code!.text));
+
+  @override
+  Future<void> readCodes(CodeFamily? family) => _call(
+    () => _host.setCodeFormats(switch (family) {
+      null => 0,
+      CodeFamily.matrix => ClvCodes.matrix,
+      CodeFamily.linear => ClvCodes.linear,
+    }),
+  );
+
+  @override
+  Future<bool> openLink(Uri link) => _call(() => _host.openUrl('$link'));
 
   @override
   Future<CameraPermission> requestPermission() async =>

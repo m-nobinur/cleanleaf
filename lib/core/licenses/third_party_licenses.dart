@@ -64,6 +64,14 @@ const thirdPartyNotices = <ThirdPartyNotice>[
     assets: ['assets/licenses/LiteRT-NOTICE.txt', _apache],
   ),
   ThirdPartyNotice(
+    packages: ['zxing-cpp 3.1.1'],
+    assets: ['assets/licenses/zxing-cpp-NOTICE.txt', _apache],
+  ),
+  ThirdPartyNotice(
+    packages: ['libzueci'],
+    assets: ['assets/licenses/libzueci-LICENSE.txt'],
+  ),
+  ThirdPartyNotice(
     packages: ['DocAligner model weights (modified)'],
     assets: ['assets/licenses/DocAligner-NOTICE.txt', _apache],
   ),

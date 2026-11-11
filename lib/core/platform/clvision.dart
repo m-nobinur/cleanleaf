@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ffi';
 import 'dart:isolate';
 
@@ -10,6 +11,7 @@ import 'package:flutter/services.dart';
 abstract final class ClvStatus {
   static const ok = 0;
   static const noQuad = 1;
+  static const noCode = 2;
   static const notImplemented = -1;
   static const invalidArgument = -2;
   static const decodeFailed = -3;
@@ -60,6 +62,21 @@ final class ClvRenderParams extends Struct {
   /// 1 encodes PNG instead of JPEG.
   @Int32()
   external int encodePng;
+}
+
+/// `clv_code_formats` bits.
+abstract final class ClvCodes {
+  static const matrix = 1;
+  static const linear = 2;
+}
+
+final class ClvCode extends Struct {
+  /// NUL-terminated format name, e.g. "QR Code".
+  @Array(32)
+  external Array<Uint8> format;
+  external Pointer<Uint8> text;
+  @Int32()
+  external int textLength;
 }
 
 @Native<Pointer<Utf8> Function()>(symbol: 'clv_opencv_version', isLeaf: true)
@@ -123,6 +140,25 @@ external int clvThumbnail(
 @Native<Void Function(Pointer<Void>)>(symbol: 'clv_free', isLeaf: true)
 external void clvFree(Pointer<Void> buffer);
 
+@Native<Int32 Function(Pointer<ClvYuvFrame>, Int32, Pointer<ClvCode>)>(
+  symbol: 'clv_decode_frame_codes',
+)
+external int clvDecodeFrameCodes(
+  Pointer<ClvYuvFrame> frame,
+  int formats,
+  Pointer<ClvCode> codeOut,
+);
+
+@Native<Int32 Function(Pointer<Uint8>, Int32, Int32, Pointer<ClvCode>)>(
+  symbol: 'clv_decode_image_codes',
+)
+external int clvDecodeImageCodes(
+  Pointer<Uint8> encoded,
+  int length,
+  int formats,
+  Pointer<ClvCode> codeOut,
+);
+
 @Native<Int32 Function(Pointer<Uint8>, Int32)>(symbol: 'clv_model_load')
 external int clvModelLoad(Pointer<Uint8> model, int length);
 
@@ -135,6 +171,19 @@ external int clvModelRun(Pointer<Float> input, Pointer<Float> heatmapsOut);
 /// 1 when fp16 runs, 0 when fp32 runs, negative [ClvStatus] on failure.
 @Native<Int32 Function(Int32)>(symbol: 'clv_model_set_fp16')
 external int clvModelSetFp16(int enabled);
+
+/// Reads a decoded code and frees its text.
+({String format, String text}) takeCode(ClvCode code) {
+  final name = [
+    for (var i = 0; i < 32 && code.format[i] != 0; i++) code.format[i],
+  ];
+  final text = utf8.decode(
+    code.text.asTypedList(code.textLength),
+    allowMalformed: true,
+  );
+  clvFree(code.text.cast());
+  return (format: String.fromCharCodes(name), text: text);
+}
 
 String openCvVersion() => clvOpencvVersion().toDartString();
 
