@@ -135,7 +135,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         offset: _toastOffset,
         title: Text('Deleted "${document.title}"'),
         duration: _undoWindow,
-        action: ShadButton.outline(
+        action: ShadButton.secondary(
+          height: 48,
           onPressed: () {
             _pendingDeletes.remove(document.id)?.cancel();
             setState(() => _hidden.remove(document.id));

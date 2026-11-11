@@ -7,6 +7,7 @@ import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/radii.dart';
 import '../../../core/theme/spacing.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/round_icon_button.dart';
 import '../../export/domain/convert_format.dart';
 import '../../export/presentation/convert_sheet.dart';
@@ -32,6 +33,10 @@ class DocumentScreen extends ConsumerStatefulWidget {
 class _DocumentScreenState extends ConsumerState<DocumentScreen> {
   // Edit acts on this page; a single tap on a thumbnail selects it.
   var _selected = 0;
+
+  // Toasts sit above the action bar so they never cover it.
+  Offset get _toastOffset =>
+      Offset(Spacing.lg, 100 + MediaQuery.paddingOf(context).bottom);
 
   void _back() =>
       context.canPop() ? context.pop() : context.go(AppRoutes.library);
@@ -113,11 +118,11 @@ class _DocumentScreenState extends ConsumerState<DocumentScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               header,
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Spacing.xl),
-                child: Text(
-                  'This document no longer exists.',
-                  style: theme.textTheme.muted,
+              const Expanded(
+                child: EmptyState(
+                  icon: LucideIcons.fileX,
+                  title: 'Document not found',
+                  message: 'This document no longer exists.',
                 ),
               ),
             ],
@@ -171,7 +176,12 @@ class _DocumentScreenState extends ConsumerState<DocumentScreen> {
                   _Action(
                     icon: LucideIcons.fileOutput,
                     label: 'Convert',
-                    onTap: () => convertDocument(context, ref, document),
+                    onTap: () => convertDocument(
+                      context,
+                      ref,
+                      document,
+                      toastOffset: _toastOffset,
+                    ),
                   ),
                   if (extractText != null)
                     _Action(
@@ -187,6 +197,7 @@ class _DocumentScreenState extends ConsumerState<DocumentScreen> {
                       ref,
                       ConvertFormat.pdf,
                       document.id,
+                      toastOffset: _toastOffset,
                     ),
                   ),
                   _Action(
@@ -267,7 +278,7 @@ class _PageTile extends StatelessWidget {
                 child: Text(
                   number.toString().padLeft(2, '0'),
                   style: theme.textTheme.monoMeta.copyWith(
-                    color: selected ? colors.primary : colors.mutedForeground,
+                    color: selected ? colors.leafText : colors.mutedForeground,
                   ),
                 ),
               ),

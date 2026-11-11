@@ -5,7 +5,44 @@ import '../theme/app_theme.dart';
 import '../theme/radii.dart';
 import '../theme/spacing.dart';
 
-enum TileTone { leaf, ember, mist, ink }
+enum TileTone {
+  leaf,
+  ember,
+  mist,
+  ink;
+
+  ({Color background, Color foreground, Color badge, Color icon, Color edge})
+  colors(ShadColorScheme c) => switch (this) {
+    leaf => (
+      background: c.tileLeaf,
+      foreground: c.foreground,
+      badge: c.tileLeafBadge,
+      icon: c.tileLeafIcon,
+      edge: c.tileLeafEdge,
+    ),
+    ember => (
+      background: c.tileEmber,
+      foreground: c.foreground,
+      badge: c.tileEmberBadge,
+      icon: c.tileEmberIcon,
+      edge: c.tileEmberEdge,
+    ),
+    mist => (
+      background: c.tileMist,
+      foreground: c.foreground,
+      badge: c.tileMistBadge,
+      icon: c.tileMistIcon,
+      edge: c.hairline,
+    ),
+    ink => (
+      background: c.tileInk,
+      foreground: c.onTileInk,
+      badge: c.tileInkBadge,
+      icon: c.tileInkIcon,
+      edge: const Color(0x00000000),
+    ),
+  };
+}
 
 /// A tinted, pressable tile for the home bento and the scan-mode sheet.
 class BentoTile extends StatefulWidget {
@@ -48,36 +85,9 @@ class _BentoTileState extends State<BentoTile> {
     final theme = ShadTheme.of(context);
     final colors = theme.colorScheme;
     final text = theme.textTheme;
-    final (background, foreground, badge, icon, edge) = switch (widget.tone) {
-      TileTone.leaf => (
-        colors.tileLeaf,
-        colors.foreground,
-        colors.tileLeafBadge,
-        colors.tileLeafIcon,
-        colors.tileLeafEdge,
-      ),
-      TileTone.ember => (
-        colors.tileEmber,
-        colors.foreground,
-        colors.tileEmberBadge,
-        colors.tileEmberIcon,
-        colors.tileEmberEdge,
-      ),
-      TileTone.mist => (
-        colors.tileMist,
-        colors.foreground,
-        colors.tileMistBadge,
-        colors.tileMistIcon,
-        colors.hairline,
-      ),
-      TileTone.ink => (
-        colors.tileInk,
-        colors.onTileInk,
-        colors.tileInkBadge,
-        colors.tileInkIcon,
-        const Color(0x00000000),
-      ),
-    };
+    final (:background, :foreground, :badge, :icon, :edge) = widget.tone.colors(
+      colors,
+    );
     final enabled = widget.onTap != null;
 
     final content = Padding(
@@ -112,20 +122,41 @@ class _BentoTileState extends State<BentoTile> {
                 ),
             ],
           ),
-          const Spacer(),
-          Text(
-            widget.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: text.tileTitle.copyWith(color: foreground),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            widget.caption,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: text.caption.copyWith(
-              color: foreground.withValues(alpha: 0.72),
+          // Scales the text down a touch on narrow phones or large font
+          // sizes instead of overflowing the tile.
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, box) => Align(
+                alignment: Alignment.bottomLeft,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.bottomLeft,
+                  child: SizedBox(
+                    width: box.maxWidth,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.tileTitle.copyWith(color: foreground),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.caption,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.caption.copyWith(
+                            color: foreground.withValues(alpha: 0.72),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],

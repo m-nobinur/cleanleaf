@@ -1,4 +1,7 @@
 import 'package:flutter/widgets.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
+
+import '../theme/app_theme.dart';
 
 /// The brand motif: four corner strokes (┌ ┐ └ ┘) around [child].
 class CornerBrackets extends StatelessWidget {
@@ -72,4 +75,31 @@ class CornerBracketsPainter extends CustomPainter {
       old.color != color ||
       old.strokeWidth != strokeWidth ||
       old.length != length;
+}
+
+/// The bracket motif in a leaf circle: the app mark on sheet headers.
+class BrandBadge extends StatelessWidget {
+  const BrandBadge({super.key, this.size = 48});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = ShadTheme.of(context).colorScheme;
+    return Container(
+      width: size,
+      height: size,
+      padding: EdgeInsets.all(size / 4),
+      decoration: BoxDecoration(
+        color: colors.tileLeaf,
+        shape: BoxShape.circle,
+        border: Border.all(color: colors.tileLeafEdge),
+      ),
+      child: CornerBrackets(
+        color: colors.leafText,
+        length: 0.34,
+        child: const SizedBox.expand(),
+      ),
+    );
+  }
 }

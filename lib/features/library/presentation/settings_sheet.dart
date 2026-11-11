@@ -3,6 +3,9 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/licenses/about_sheet.dart';
 import '../../../core/theme/spacing.dart';
+import '../../../core/widgets/bento_tile.dart';
+import '../../../core/widgets/list_group.dart';
+import '../../../core/widgets/modal_close_button.dart';
 import '../../scan_engine/presentation/scan_engine_dialog.dart';
 
 class SettingsRow {
@@ -10,12 +13,14 @@ class SettingsRow {
     required this.icon,
     required this.title,
     this.subtitle,
+    this.tone = TileTone.mist,
     this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String? subtitle;
+  final TileTone tone;
   final void Function(BuildContext context)? onTap;
 }
 
@@ -25,6 +30,7 @@ const settingsRows = <SettingsRow>[
     icon: LucideIcons.lock,
     title: 'Private by design',
     subtitle: 'Your scans stay on this device.',
+    tone: TileTone.leaf,
   ),
   SettingsRow(
     icon: LucideIcons.scanLine,
@@ -41,6 +47,7 @@ const settingsRows = <SettingsRow>[
 
 Future<void> showSettingsSheet(BuildContext context) => showShadSheet<void>(
   context: context,
+  barrierLabel: 'Dismiss',
   side: ShadSheetSide.bottom,
   builder: (_) => const SettingsSheet(),
 );
@@ -53,57 +60,22 @@ class SettingsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ShadSheet(
-      title: const Text('Settings'),
+      title: const ModalTitle('Settings'),
       child: Padding(
         padding: const EdgeInsets.only(top: Spacing.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [for (final row in rows) _SettingsTile(row: row)],
+        child: ListGroup(
+          children: [
+            for (final row in rows)
+              ListRow(
+                icon: row.icon,
+                tone: row.tone,
+                title: row.title,
+                caption: row.subtitle,
+                onTap: row.onTap == null ? null : () => row.onTap!(context),
+              ),
+          ],
         ),
       ),
-    );
-  }
-}
-
-class _SettingsTile extends StatelessWidget {
-  const _SettingsTile({required this.row});
-
-  final SettingsRow row;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = ShadTheme.of(context);
-    final onTap = row.onTap;
-    final text = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(row.title, style: theme.textTheme.p),
-        if (row.subtitle != null)
-          Text(row.subtitle!, style: theme.textTheme.muted),
-      ],
-    );
-    final content = Row(
-      children: [
-        Icon(row.icon, size: 20),
-        const SizedBox(width: Spacing.md),
-        Expanded(child: text),
-      ],
-    );
-    if (onTap == null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: Spacing.md),
-        child: content,
-      );
-    }
-    return ShadButton.ghost(
-      width: double.infinity,
-      // 0 sizes the button to its two-line content.
-      height: 0,
-      padding: const EdgeInsets.symmetric(vertical: Spacing.md),
-      expands: true,
-      mainAxisAlignment: MainAxisAlignment.start,
-      onPressed: () => onTap(context),
-      child: content,
     );
   }
 }
