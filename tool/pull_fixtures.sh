@@ -33,10 +33,12 @@ while IFS= read -r line; do
   path=${line#* }
   n=$((n + 1))
   name=$(printf 'f%03d.jpg' "$n")
-  $ADB pull "$path" "$tmp/raw.jpg" >/dev/null
+  $ADB pull "$path" "$tmp/raw.jpg" >/dev/null </dev/null
   sips -Z "$LONG_SIDE" -s format jpeg -s formatOptions 90 "$tmp/raw.jpg" --out "$OUT/$name" >/dev/null
   echo "$name <- $path"
 done <"$tmp/list"
 
 [ "$n" -gt 0 ] || { echo "no photos newer than epoch $epoch in $SRC" >&2; exit 1; }
+# sips keeps the EXIF orientation tag over sideways pixels; make them upright.
+dart run "$(dirname "$0")/upright_jpegs.dart" "$OUT"
 echo "pulled $n photo(s) into $OUT"
