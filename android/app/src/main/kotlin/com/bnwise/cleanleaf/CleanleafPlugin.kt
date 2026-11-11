@@ -5,6 +5,8 @@ import com.bnwise.cleanleaf.camera.CameraHostApi
 import com.bnwise.cleanleaf.camera.CornerFramesStreamHandler
 import com.bnwise.cleanleaf.mlkit.GoogleScannerHost
 import com.bnwise.cleanleaf.mlkit.GoogleScannerHostApi
+import com.bnwise.cleanleaf.ocrbench.OcrBenchHost
+import com.bnwise.cleanleaf.ocrbench.OcrBenchHostApi
 import com.bnwise.cleanleaf.vision.VisionHost
 import com.bnwise.cleanleaf.vision.VisionHostApi
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -26,6 +28,7 @@ class CleanleafPlugin :
         CornerFramesStreamHandler.register(messenger, camera.cornerFrames)
         VisionHostApi.setUp(messenger, VisionHost())
         googleScanner = GoogleScannerHost(binding.applicationContext).also { GoogleScannerHostApi.setUp(messenger, it) }
+        OcrBenchHostApi.setUp(messenger, OcrBenchHost(binding.applicationContext))
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -33,6 +36,7 @@ class CleanleafPlugin :
         CameraHostApi.setUp(messenger, null)
         VisionHostApi.setUp(messenger, null)
         GoogleScannerHostApi.setUp(messenger, null)
+        OcrBenchHostApi.setUp(messenger, null)
         camera = null
         googleScanner = null
     }
