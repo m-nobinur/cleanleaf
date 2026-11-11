@@ -20,6 +20,16 @@ extension BrandColors on ShadColorScheme {
   Color get tileMist => custom['tileMist']!;
   Color get tileInk => custom['tileInk']!;
   Color get onTileInk => custom['onTileInk']!;
+  Color get tileLeafBadge => custom['tileLeafBadge']!;
+  Color get tileLeafIcon => custom['tileLeafIcon']!;
+  Color get tileLeafEdge => custom['tileLeafEdge']!;
+  Color get tileEmberBadge => custom['tileEmberBadge']!;
+  Color get tileEmberIcon => custom['tileEmberIcon']!;
+  Color get tileEmberEdge => custom['tileEmberEdge']!;
+  Color get tileMistBadge => custom['tileMistBadge']!;
+  Color get tileMistIcon => custom['tileMistIcon']!;
+  Color get tileInkBadge => custom['tileInkBadge']!;
+  Color get tileInkIcon => custom['tileInkIcon']!;
   Color get nav => custom['nav']!;
   Color get onNav => custom['onNav']!;
   Color get navSelected => custom['navSelected']!;
@@ -90,6 +100,16 @@ abstract final class AppTheme {
         'tileMist': Color(0xFFFFFFFF),
         'tileInk': Brand.ink,
         'onTileInk': Brand.mist,
+        'tileLeafBadge': Color(0xFFFFFFFF),
+        'tileLeafIcon': Brand.ink,
+        'tileLeafEdge': Color(0x00000000),
+        'tileEmberBadge': Color(0xFFFFFFFF),
+        'tileEmberIcon': Brand.ink,
+        'tileEmberEdge': Color(0x00000000),
+        'tileMistBadge': Color(0xFFFFFFFF),
+        'tileMistIcon': Brand.ink,
+        'tileInkBadge': Color(0xFFFFFFFF),
+        'tileInkIcon': Brand.ink,
         'nav': Brand.ink,
         'onNav': Brand.mist,
         'navSelected': Color(0xFFFFFFFF),
@@ -98,43 +118,54 @@ abstract final class AppTheme {
     ),
   );
 
+  // Deep ink: tints stay dark but get coloured hairlines and luminous icons
+  // on tinted badges, so colour reads as light, not fill (T-034, variant A).
   static final dark = _theme(
     Brightness.dark,
     const ShadColorScheme(
-      background: Brand.ink,
-      foreground: Color(0xFFF4F4F4),
-      card: Color(0xFF1B1B1B),
-      cardForeground: Color(0xFFF4F4F4),
-      popover: Color(0xFF1B1B1B),
-      popoverForeground: Color(0xFFF4F4F4),
+      background: Color(0xFF090A09),
+      foreground: Color(0xFFF2F4F2),
+      card: Color(0xFF141614),
+      cardForeground: Color(0xFFF2F4F2),
+      popover: Color(0xFF141614),
+      popoverForeground: Color(0xFFF2F4F2),
       primary: Brand.leaf,
       primaryForeground: Color(0xFFFFFFFF),
-      secondary: Color(0xFF242424),
-      secondaryForeground: Color(0xFFF4F4F4),
-      muted: Color(0xFF242424),
-      mutedForeground: Color(0xFF9E9E9E),
-      accent: Color(0xFF242424),
-      accentForeground: Color(0xFFF4F4F4),
+      secondary: Color(0xFF1D201D),
+      secondaryForeground: Color(0xFFF2F4F2),
+      muted: Color(0xFF1D201D),
+      mutedForeground: Color(0xFF9AA39C),
+      accent: Color(0xFF1D201D),
+      accentForeground: Color(0xFFF2F4F2),
       destructive: Color(0xFFF04438),
       destructiveForeground: Color(0xFFFFFFFF),
-      border: Color(0xFF2E2E2E),
-      input: Color(0xFF2E2E2E),
+      border: Color(0xFF272B27),
+      input: Color(0xFF272B27),
       ring: Brand.leaf,
       selection: Color(0x550A8A5A),
       custom: {
         'highlight': Brand.ember,
-        'hairline': Color(0xFF2E2E2E),
-        'badge': Color(0xFF242424),
-        // Leaf at 18% and ember at 15% over ink, pre-blended to opaque.
-        'tileLeaf': Color(0xFF10271E),
-        'tileEmber': Color(0xFF321C13),
-        'tileMist': Color(0xFF1B1B1B),
-        'tileInk': Color(0xFFF4F4F4),
-        'onTileInk': Brand.ink,
-        'nav': Color(0xFF1B1B1B),
-        'onNav': Color(0xFF9E9E9E),
-        'navSelected': Color(0xFFF4F4F4),
-        'onNavSelected': Brand.ink,
+        'hairline': Color(0xFF272B27),
+        'badge': Color(0xFF1D201D),
+        'tileLeaf': Color(0xFF0B1F16),
+        'tileEmber': Color(0xFF22120A),
+        'tileMist': Color(0xFF141614),
+        'tileInk': Color(0xFFEDF0EB),
+        'onTileInk': Color(0xFF0E100E),
+        'tileLeafBadge': Color(0xFF123A2A),
+        'tileLeafIcon': Color(0xFF52E0A4),
+        'tileLeafEdge': Color(0xFF1E5E42),
+        'tileEmberBadge': Color(0xFF41200F),
+        'tileEmberIcon': Color(0xFFFF9466),
+        'tileEmberEdge': Color(0xFF703519),
+        'tileMistBadge': Color(0xFF1D201D),
+        'tileMistIcon': Color(0xFFF2F4F2),
+        'tileInkBadge': Color(0xFF0E100E),
+        'tileInkIcon': Color(0xFFEDF0EB),
+        'nav': Color(0xFF141614),
+        'onNav': Color(0xFF9AA39C),
+        'navSelected': Color(0xFFEDF0EB),
+        'onNavSelected': Color(0xFF0E100E),
       },
     ),
   );
