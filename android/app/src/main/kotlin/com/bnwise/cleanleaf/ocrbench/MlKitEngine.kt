@@ -2,10 +2,12 @@ package com.bnwise.cleanleaf.ocrbench
 
 import android.content.Context
 import android.graphics.BitmapFactory
+import android.util.Log
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.common.MlKit
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import org.json.JSONArray
 import org.json.JSONObject
@@ -21,7 +23,20 @@ class MlKitEngine(
         MlKit.initialize(context.applicationContext)
     }
 
-    private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    private val recognizer = create(context.applicationContext)
+
+    private fun create(context: Context): TextRecognizer =
+        try {
+            TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        } catch (e: Throwable) {
+            Log.i("CLBENCH", "mlkit getClient failed, retrying after TransportRuntime.initialize: ${e.stackTraceToString().take(4000)}")
+            // D-37 strips the telemetry backend; the transport runtime may still need initializing.
+            Class
+                .forName("com.google.android.datatransport.runtime.TransportRuntime")
+                .getMethod("initialize", Context::class.java)
+                .invoke(null, context)
+            TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        }
 
     override fun read(page: File): JSONObject {
         val t0 = System.nanoTime()

@@ -51,7 +51,7 @@ class OcrBenchHost(
                 engines += create(spec, root)
                 log("init engine=$spec ms=${SystemClock.elapsedRealtime() - t0} rss_delta_mb=${(rssKb() - before) / 1024}")
             } catch (e: Throwable) {
-                log("init FAILED engine=$spec ${e.javaClass.simpleName}: ${e.message}")
+                log("init FAILED engine=$spec ${e.stackTraceToString().take(4000)}")
             }
         }
         val summary = JSONArray()

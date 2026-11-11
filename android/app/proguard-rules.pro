@@ -3,3 +3,7 @@
 -keep class com.googlecode.leptonica.android.** { *; }
 -keep class ai.onnxruntime.** { *; }
 -keep class org.opencv.** { *; }
+# Readable ML Kit traces in the probe (names only; shrinking still applies).
+-keepnames class com.google.mlkit.** { *; }
+-keepnames class com.google.android.datatransport.** { *; }
+-keep class com.google.android.datatransport.runtime.TransportRuntime { public static void initialize(android.content.Context); }

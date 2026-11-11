@@ -18,6 +18,8 @@ import org.opencv.core.Size
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import java.io.File
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -135,7 +137,7 @@ class PpOcrEngine(
         val planes = ArrayList<Mat>()
         Core.split(f, planes)
         val n = rh * rw
-        val input = FloatBuffer.allocate(3 * n)
+        val input = paddedFloats(3 * n)
         val plane = FloatArray(n)
         for (c in 0 until 3) {
             Core.subtract(planes[c], Scalar(MEAN[c]), planes[c])
@@ -304,7 +306,7 @@ class PpOcrEngine(
         r.convertTo(r, CvType.CV_32FC3, 2 / 255.0, -1.0)
         val planes = ArrayList<Mat>()
         Core.split(r, planes)
-        val buf = FloatBuffer.allocate(3 * 48 * imgW)
+        val buf = paddedFloats(3 * 48 * imgW)
         val row = FloatArray(rw)
         for (ch in 0 until 3) {
             for (y in 0 until 48) {
@@ -380,6 +382,14 @@ class PpOcrEngine(
             wd.map { it.first }.joinToString("") to listOf(at(x0, 0.0), at(x1, 0.0), at(x1, 1.0), at(x0, 1.0))
         }
     }
+
+    // XNNPACK reads up to 16 bytes past an input; an exact-size buffer ending on a page faults (SEGV_ACCERR).
+    private fun paddedFloats(n: Int): FloatBuffer =
+        ByteBuffer
+            .allocateDirect(4 * n + 64)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
+            .apply { limit(n) }
 
     private fun dist(
         a: Point,
