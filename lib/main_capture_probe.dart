@@ -225,12 +225,13 @@ class _Script {
     await _pause(2000);
     await _scan('document', photos.pick(receipt: false), measureUi: true);
     await _scan('receipt', photos.pick(receipt: true));
-    await _import(photos.pick(receipt: false));
     for (final mode in ['idCard', 'passport', 'book']) {
       await _open(mode);
       await _shot('camera_${mode.toLowerCase()}');
     }
     await _lifecycle();
+    // Last, so the review stays open for theme and drag shots after DONE.
+    await _import(photos.pick(receipt: false));
   }
 
   Future<void> _open(String mode) async {
@@ -291,7 +292,6 @@ class _Script {
     unawaited(router.push(AppRoutes.editor(page!.id, fresh: true)));
     await _editorReady('import_to_editor_ready', start);
     await _shot('review_import');
-    router.go('/');
   }
 
   /// Logs when the review shows its photo: the route is up and the decode the
