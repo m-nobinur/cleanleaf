@@ -1,10 +1,12 @@
 import 'package:cleanleaf/app.dart';
 import 'package:cleanleaf/core/storage/storage_providers.dart';
+import 'package:cleanleaf/features/capture/data/capture_providers.dart';
 import 'package:cleanleaf/features/library/data/library_providers.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'features/capture/presentation/fake_camera.dart';
 import 'features/library/presentation/fakes.dart';
 
 void main() {
@@ -20,6 +22,7 @@ void main() {
           ),
           pageRepositoryProvider.overrideWithValue(FakePageRepository()),
           settingsStoreProvider.overrideWithValue(MemorySettingsStore()),
+          documentCameraProvider.overrideWithValue(FakeCamera()),
         ],
         child: const CleanleafApp(),
       ),
@@ -29,6 +32,6 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('quick-scan')));
     await tester.pumpAndSettle();
-    expect(find.text('Capture'), findsOneWidget);
+    expect(find.bySemanticsLabel('Take photo'), findsOneWidget);
   });
 }
