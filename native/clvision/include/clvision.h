@@ -54,7 +54,8 @@ typedef struct clv_yuv_frame {
 
 // Corners are written as TL, TR, BR, BL (x, y) pairs normalized to 0..1 in the
 // upright image, so corners_out holds 8 floats. Detection returns CLV_OK, or
-// CLV_NO_QUAD when no page is found.
+// CLV_NO_QUAD when no page is found; confidence_out (the weakest corner's heatmap
+// peak) is written in both cases. The model must be loaded (clv_model_load).
 
 // Detects a page in a colour camera frame.
 CLV_API int32_t clv_detect_frame(const clv_yuv_frame* frame, float* corners_out,
@@ -95,6 +96,11 @@ CLV_API int32_t clv_model_loaded(void);
 
 // Thread-safe; concurrent callers are serialized.
 CLV_API int32_t clv_model_run(const float* input, float* heatmaps_out);
+
+// Rebuilds the loaded model's interpreter with XNNPACK fp16 inference (FORCE_FP16) or fp32.
+// Returns 1 when fp16 runs, 0 when fp32 runs (also when the CPU can't run fp16), or a negative
+// clv_status.
+CLV_API int32_t clv_model_set_fp16(int32_t enabled);
 
 #ifdef __cplusplus
 }

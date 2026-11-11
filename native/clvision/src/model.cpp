@@ -20,6 +20,7 @@ constexpr size_t kOutputBytes =
 
 struct Model {
   std::vector<uint8_t> bytes;
+  bool fp16 = false;
   TfLiteModel* model = nullptr;
   TfLiteDelegate* xnnpack = nullptr;
   TfLiteInterpreterOptions* options = nullptr;
@@ -41,6 +42,7 @@ bool create(Model& m) {
   if (m.model == nullptr) return false;
   TfLiteXNNPackDelegateOptions xnn = TfLiteXNNPackDelegateOptionsDefault();
   xnn.num_threads = kThreads;
+  if (m.fp16) xnn.flags |= TFLITE_XNNPACK_DELEGATE_FLAG_FORCE_FP16;
   m.xnnpack = TfLiteXNNPackDelegateCreate(&xnn);
   if (m.xnnpack == nullptr) return false;
   m.options = TfLiteInterpreterOptionsCreate();
@@ -52,20 +54,34 @@ bool create(Model& m) {
          TfLiteTensorByteSize(TfLiteInterpreterGetOutputTensor(m.interpreter, 0)) == kOutputBytes;
 }
 
+// Falls back to fp32 when fp16 is asked for but can't be built (no fp16 arithmetic, e.g. A53).
+Model* build(const uint8_t* bytes, size_t length, bool fp16) {
+  auto* m = new Model();
+  m->bytes.assign(bytes, bytes + length);
+  m->fp16 = fp16;
+  if (create(*m)) return m;
+  delete m;
+  return fp16 ? build(bytes, length, false) : nullptr;
+}
+
 }  // namespace
 
 int32_t clv_model_load(const uint8_t* model, int32_t length) {
   if (model == nullptr || length <= 0) return CLV_ERR_INVALID_ARGUMENT;
   std::lock_guard<std::mutex> lock(mutex);
   if (loaded != nullptr) return CLV_OK;
-  auto* m = new Model();
-  m->bytes.assign(model, model + length);
-  if (!create(*m)) {
-    delete m;
-    return CLV_ERR_INTERNAL;
-  }
-  loaded = m;
-  return CLV_OK;
+  loaded = build(model, size_t(length), false);  // D-11: fp32 until fp16 is adopted
+  return loaded != nullptr ? CLV_OK : CLV_ERR_INTERNAL;
+}
+
+int32_t clv_model_set_fp16(int32_t enabled) {
+  std::lock_guard<std::mutex> lock(mutex);
+  if (loaded == nullptr) return CLV_ERR_MODEL_NOT_LOADED;
+  Model* next = build(loaded->bytes.data(), loaded->bytes.size(), enabled != 0);
+  if (next == nullptr) return CLV_ERR_INTERNAL;
+  delete loaded;
+  loaded = next;
+  return loaded->fp16;
 }
 
 int32_t clv_model_loaded(void) {

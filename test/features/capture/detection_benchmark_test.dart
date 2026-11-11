@@ -1,18 +1,45 @@
 // The benchmark prints its report to the test log.
 // ignore_for_file: avoid_print
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:cleanleaf/core/geometry/quad.dart';
+import 'package:cleanleaf/core/platform/clvision.dart';
 import 'package:cleanleaf/features/capture/domain/quad_detector.dart';
+import 'package:ffi/ffi.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 
 import 'detection_benchmark_harness.dart';
 
-/// Wire the detector under test here (T-005 / T-018 replace this null).
-final QuadDetector? detectorUnderTest = null;
+/// The shipped still detector: DocAligner in clvision (D-11).
+class _ClvisionDetector implements QuadDetector {
+  @override
+  Future<Quad?> detect(Uint8List encodedImage) async => using((arena) {
+    final input = arena<Uint8>(encodedImage.length)
+      ..asTypedList(encodedImage.length).setAll(0, encodedImage);
+    final c = arena<Float>(8);
+    final status = clvDetectImage(input, encodedImage.length, c, arena());
+    if (status == ClvStatus.noQuad) return null;
+    if (status != ClvStatus.ok) throw StateError('clvision status $status');
+    return (
+      topLeft: (x: c[0], y: c[1]),
+      topRight: (x: c[2], y: c[3]),
+      bottomRight: (x: c[4], y: c[5]),
+      bottomLeft: (x: c[6], y: c[7]),
+    );
+  });
+}
+
+/// Loads the model; `CLEANLEAF_FP16=1` or `0` picks the inference precision.
+Future<void> _loadModel() async {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  await loadDocAligner();
+  final fp16 = Platform.environment['CLEANLEAF_FP16'];
+  if (fp16 != null) expect(clvModelSetFp16(int.parse(fp16)), int.parse(fp16));
+}
 
 /// Finds the bounding box of near-white pixels; enough for synthetic rectangles.
 class _BrightBoxDetector implements QuadDetector {
@@ -171,17 +198,17 @@ void main() {
   });
 
   final dir = fixturesDir();
-  final skipReason =
-      fixturesProblem(dir) ??
-      (detectorUnderTest == null ? 'no detector wired yet' : null);
-  test(
-    'detection benchmark meets the gate',
-    () async {
-      final report = await runBenchmark(dir, detectorUnderTest!);
-      print(report.format());
-      expect(report.passesGate, isTrue);
-    },
-    tags: 'benchmark',
-    skip: skipReason,
-  );
+  group('clvision', () {
+    setUpAll(_loadModel);
+    test(
+      'detection benchmark meets the gate',
+      () async {
+        final report = await runBenchmark(dir, _ClvisionDetector());
+        print(report.format());
+        expect(report.passesGate, isTrue);
+      },
+      tags: 'benchmark',
+      skip: fixturesProblem(dir),
+    );
+  });
 }
