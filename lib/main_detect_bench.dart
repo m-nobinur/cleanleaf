@@ -11,10 +11,12 @@ import 'core/platform/camera_api.g.dart';
 import 'core/platform/clvision.dart';
 
 // Times detection on the device and logs every result for an on-device accuracy
-// check. Push photos (*.jpg, *.png; big*.jpg are timed 5 times) and upright
-// frames (*.bmp, fed as 90-degree NV21 like the phone's analysis frames) to
-// <external files>/detect-bench/, run with -t and read `adb logcat -s flutter:I`
-// until `CLBENCH DONE`. The same lines go to detect-bench/results.txt.
+// check. Run with -t: the app creates <external files>/detect-bench/ (a dir adb
+// creates is unreadable to the app) and waits up to 3 min for expected.json,
+// which must be pushed last after the photos (*.jpg, *.png; big*.jpg are timed
+// 5 times) and upright frames (*.bmp, fed as 90-degree NV21 like the phone's
+// analysis frames). Read `adb logcat -s flutter:I` until `CLBENCH DONE`; the
+// same lines go to detect-bench/results.txt.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final texture = ValueNotifier<int?>(null);
@@ -27,7 +29,7 @@ Future<void> main() async {
   );
   final dir = Directory(
     '${(await getExternalStorageDirectory())!.path}/detect-bench',
-  );
+  )..createSync();
   final lines = <String>[];
   void log(String line) {
     lines.add(line);
@@ -35,6 +37,12 @@ Future<void> main() async {
   }
 
   try {
+    log('waiting for inputs in ${dir.path}');
+    final sentinel = File('${dir.path}/expected.json');
+    for (var i = 0; i < 180 && !sentinel.existsSync(); i++) {
+      await Future<void>.delayed(const Duration(seconds: 1));
+    }
+    await Future<void>.delayed(const Duration(seconds: 2));
     await runDetectBench(dir, texture, log);
   } catch (e, stack) {
     log('FAILED $e $stack');
