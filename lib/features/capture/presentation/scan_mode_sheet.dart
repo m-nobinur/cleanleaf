@@ -38,13 +38,13 @@ extension ScanModeLabels on ScanMode {
   };
 
   String get caption => switch (this) {
-    ScanMode.document => 'Pages, letters, forms',
+    ScanMode.document => 'Pages and forms',
     ScanMode.idCard => 'Snaps to card size',
-    ScanMode.passport => 'Photo page, snaps to size',
+    ScanMode.passport => 'Photo page',
     ScanMode.receipt => 'Long, narrow slips',
-    ScanMode.book => 'Two-page spread as one page',
+    ScanMode.book => 'Two pages as one',
     ScanMode.qrCode => 'Read links and text',
-    ScanMode.barcode => 'Read product codes',
+    ScanMode.barcode => 'Product codes',
   };
 
   IconData get icon => switch (this) {
