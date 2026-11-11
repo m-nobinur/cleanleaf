@@ -30,10 +30,10 @@ typedef enum clv_filter {
 #define CLV_JPEG_QUALITY 85
 
 typedef struct clv_render_params {
-  int32_t filter;                  // clv_filter
-  int32_t rotation_quarter_turns;  // clockwise, 0..3
-  float aspect_ratio;              // long side / short side; 0 keeps the quad's own ratio
-  int32_t max_long_side;           // output cap in pixels; 0 renders at full size
+  int32_t filter;            // clv_filter
+  int32_t rotation_degrees;  // clockwise: 0, 90, 180, 270
+  float aspect_ratio;        // long side / short side; 0 keeps the quad's own ratio
+  int32_t max_long_side;     // output cap in pixels; 0 renders at full size
 } clv_render_params;
 
 // OpenCV version the library was linked against, e.g. "4.13.0". Static storage.

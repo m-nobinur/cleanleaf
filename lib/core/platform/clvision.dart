@@ -38,7 +38,7 @@ final class ClvRenderParams extends Struct {
   @Int32()
   external int filter;
   @Int32()
-  external int rotationQuarterTurns;
+  external int rotationDegrees;
   @Float()
   external double aspectRatio;
   @Int32()
