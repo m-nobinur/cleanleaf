@@ -69,8 +69,8 @@ class DocumentCard extends ConsumerWidget {
           excludeSemantics: true,
           onTap: onMenu,
           child: ShadIconButton.ghost(
-            width: 40,
-            height: 40,
+            width: 48,
+            height: 48,
             foregroundColor: theme.colorScheme.mutedForeground,
             icon: const Icon(LucideIcons.ellipsis, size: 18),
             onPressed: onMenu,

@@ -3,7 +3,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/spacing.dart';
-import '../../../core/widgets/corner_brackets.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/round_icon_button.dart';
 import '../domain/document.dart';
 import 'document_card.dart';
@@ -51,7 +51,11 @@ class _FilesTabState extends State<FilesTab> {
           child: documents == null
               ? const SizedBox.shrink()
               : documents.isEmpty
-              ? const _EmptyState()
+              ? const EmptyState(
+                  icon: LucideIcons.fileText,
+                  title: 'No documents yet',
+                  message: 'Tap + to scan your first document.',
+                )
               : _DocumentList(
                   documents: documents,
                   layout: _layout,
@@ -165,43 +169,5 @@ class _DocumentList extends StatelessWidget {
         itemBuilder: (_, i) => card(documents[i]),
       ),
     };
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = ShadTheme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox.square(
-              dimension: 72,
-              child: CornerBrackets(
-                color: theme.colorScheme.primary,
-                child: Icon(
-                  LucideIcons.fileText,
-                  size: 28,
-                  color: theme.colorScheme.mutedForeground,
-                ),
-              ),
-            ),
-            const SizedBox(height: Spacing.lg),
-            Text('No documents yet', style: theme.textTheme.tileTitle),
-            const SizedBox(height: Spacing.sm),
-            Text(
-              'Tap + to scan your first document.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.muted,
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
