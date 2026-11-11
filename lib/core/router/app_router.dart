@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/capture/domain/scan_mode.dart';
 import '../../features/capture/presentation/capture_screen.dart';
 import '../../features/capture/presentation/confirm_screen.dart';
+import '../../features/document/presentation/document_screen.dart';
 import '../../features/editor/presentation/editor_screen.dart';
 import '../../features/enhance/presentation/enhance_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
@@ -36,6 +37,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/enhance/:pageId',
         builder: (context, state) =>
             EnhanceScreen(pageId: state.pathParameters['pageId']!),
+      ),
+      GoRoute(
+        path: '/document/:docId',
+        builder: (context, state) =>
+            DocumentScreen(documentId: state.pathParameters['docId']!),
       ),
     ],
   );

@@ -7,7 +7,9 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../../core/licenses/about_sheet.dart';
 import '../../capture/domain/scan_mode.dart';
 import '../../capture/presentation/scan_mode_sheet.dart';
-import '../../export/data/export_providers.dart';
+import '../../document/presentation/open_document.dart';
+import '../../export/domain/convert_format.dart';
+import '../../export/presentation/convert_sheet.dart';
 import '../../gallery_import/presentation/import_from_gallery.dart';
 import '../../library/data/library_providers.dart';
 import '../../library/domain/document.dart';
@@ -62,9 +64,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (mode != null && mounted) await _scanIn(mode);
   }
 
-  Future<void> _export(List<Document> documents) async {
-    final document = await showDocumentPicker(context, documents);
-    if (document != null && mounted) await _share(document);
+  Future<void> _open(Document document) async {
+    final action = await openDocument(context, document.id);
+    if (action != DocumentAction.delete || !mounted) return;
+    // The title may have been renamed inside the document view.
+    final current = ref
+        .read(documentsProvider)
+        .value
+        ?.where((d) => d.id == document.id)
+        .firstOrNull;
+    _delete(current ?? document);
+  }
+
+  Future<void> _pickAndOpen(List<Document> documents) async {
+    final document = await showDocumentPicker(
+      context,
+      documents,
+      title: 'Edit',
+      description: 'Pick a document to open.',
+    );
+    if (document != null && mounted) await _open(document);
+  }
+
+  Future<void> _pickAndConvert(List<Document> documents) async {
+    final document = await showDocumentPicker(
+      context,
+      documents,
+      title: 'Convert',
+      description: 'Pick a document to convert.',
+    );
+    if (document != null && mounted) {
+      await convertDocument(context, ref, document, toastOffset: _toastOffset);
+    }
   }
 
   Future<void> _openMenu(Document document) async {
@@ -83,19 +114,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  Future<void> _share(Document document) async {
-    try {
-      await ref.read(shareDocumentPdfProvider)(document.id);
-    } on Object {
-      if (!mounted) return;
-      ShadToaster.of(context).show(
-        ShadToast.destructive(
-          offset: _toastOffset,
-          title: const Text('Could not export this PDF'),
-        ),
-      );
-    }
-  }
+  Future<void> _share(Document document) => shareDocumentAs(
+    context,
+    ref,
+    ConvertFormat.pdf,
+    document.id,
+    toastOffset: _toastOffset,
+  );
 
   void _delete(Document document) {
     setState(() => _hidden.add(document.id));
@@ -145,6 +170,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ?.where((d) => !_hidden.contains(d.id))
         .toList();
     final lastMode = ref.watch(lastScanModeProvider).value ?? ScanMode.document;
+    final hasDocuments = visible != null && visible.isNotEmpty;
     final bottomInset = _bottomInset;
     return Scaffold(
       body: Stack(
@@ -161,14 +187,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   onSettings: () => showSettingsSheet(context),
                   onScan: _chooseModeAndScan,
                   onImport: () => importFromGallery(context, ref),
-                  onExport: visible == null || visible.isEmpty
-                      ? null
-                      : () => _export(visible),
-                  onOpenFiles: () => setState(() => _tab = ShellTab.files),
+                  onEdit: hasDocuments ? () => _pickAndOpen(visible) : null,
+                  onConvert: hasDocuments
+                      ? () => _pickAndConvert(visible)
+                      : null,
+                  onOpen: _open,
                   onMenu: _openMenu,
                 ),
                 FilesTab(
                   documents: visible,
+                  onOpen: _open,
                   onMenu: _openMenu,
                   bottomInset: bottomInset,
                 ),

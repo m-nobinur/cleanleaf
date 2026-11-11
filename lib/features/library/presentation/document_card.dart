@@ -32,7 +32,7 @@ class DocumentCard extends ConsumerWidget {
     final meta =
         '$count ${count == 1 ? 'page' : 'pages'} · '
         '${DateFormat('d MMM yyyy').format(document.updatedAt)}';
-    final thumb = _Thumbnail(path: pages?.firstOrNull?.thumbPath);
+    final thumb = PageThumbnail(path: pages?.firstOrNull?.thumbPath);
 
     final caption = Row(
       children: [
@@ -126,8 +126,8 @@ class DocumentCard extends ConsumerWidget {
   }
 }
 
-class _Thumbnail extends ConsumerWidget {
-  const _Thumbnail({required this.path});
+class PageThumbnail extends ConsumerWidget {
+  const PageThumbnail({super.key, required this.path});
 
   final String? path;
 
