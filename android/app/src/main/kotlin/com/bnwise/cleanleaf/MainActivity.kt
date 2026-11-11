@@ -1,9 +1,12 @@
 package com.bnwise.cleanleaf
 
+import android.content.Intent
 import android.os.Bundle
+import android.os.Process
 import android.util.Log
 import android.view.WindowManager
 import com.bnwise.cleanleaf.detection.DetectionBench
+import com.bnwise.cleanleaf.detection.RestartActivity
 import io.flutter.embedding.android.FlutterActivity
 
 class MainActivity : FlutterActivity() {
@@ -14,10 +17,20 @@ class MainActivity : FlutterActivity() {
             val b = DetectionBench(applicationContext)
             bench = b
             Thread({
-                Thread.sleep(3000)
-                runCatching { b.run() }.onFailure {
+                Thread.sleep(1500)
+                val more = runCatching { b.runStep() }.getOrElse {
                     Log.e("CLBENCH", "failed", it)
                     Log.i("CLBENCH", "DONE error")
+                    false
+                }
+                if (more) {
+                    runOnUiThread {
+                        startActivity(
+                            Intent(this, RestartActivity::class.java)
+                                .putExtra(RestartActivity.EXTRA_PID, Process.myPid())
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    }
                 }
             }, "clbench").start()
         }

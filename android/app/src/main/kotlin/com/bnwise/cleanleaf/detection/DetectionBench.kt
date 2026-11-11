@@ -24,25 +24,81 @@ object Affinity {
     external fun pin(mask: Int): Int
 }
 
+// LiteRT's C API through our JNI shim, to control XNNPACK's thread count directly.
+object NativeBench {
+    init {
+        System.loadLibrary("tensorflowlite_jni")
+        System.loadLibrary("clbench")
+    }
+
+    external fun create(model: ByteBuffer, threads: Int, explicitXnnpack: Boolean): Long
+
+    external fun run(handle: Long, input: ByteBuffer, output: ByteBuffer): Int
+
+    external fun destroy(handle: Long)
+}
+
 private const val TAG = "CLBENCH"
 private const val IN = 256
 private const val HM = 128
 private const val A55 = 0x3F
 private const val A76 = 0xC0
 private const val PAD_ZERO = "lc100_fp16_padzero.tflite"
-private const val PLAIN = "lc100_fp16.tflite"
 
-private data class Config(
-    val name: String,
-    val model: String,
-    val threads: Int,
-    val mask: Int = 0,
-    val xnnpack: Boolean = true,
-    val fp16: Boolean = false,
-    val runs: Int = 30,
+private enum class Api { JAVA, C_API, C_XNNPACK }
+
+private data class Config(val name: String, val api: Api, val threads: Int, val mask: Int = 0, val runs: Int = 30)
+
+// One step per process: XNNPACK's thread pool may be fixed by the first interpreter a process creates.
+private val steps: List<Config?> = listOf(
+    null, // parity, pre- and post-processing timing
+    Config("java_a55_t1", Api.JAVA, 1, A55),
+    Config("java_a55_t4", Api.JAVA, 4, A55),
+    Config("java_all_t4", Api.JAVA, 4),
+    Config("capi_a55_t4", Api.C_API, 4, A55),
+    Config("xnn_all_t1", Api.C_XNNPACK, 1),
+    Config("xnn_all_t2", Api.C_XNNPACK, 2),
+    Config("xnn_all_t4", Api.C_XNNPACK, 4),
+    Config("xnn_a55_t1", Api.C_XNNPACK, 1, A55),
+    Config("xnn_a55_t2", Api.C_XNNPACK, 2, A55),
+    Config("xnn_a55_t4", Api.C_XNNPACK, 4, A55),
+    Config("xnn_a55_t6", Api.C_XNNPACK, 6, A55),
+    Config("xnn_a76_t2", Api.C_XNNPACK, 2, A76),
+    Config("xnn_a55_t4_again", Api.C_XNNPACK, 4, A55),
+    Config("java_a55_t1_again", Api.JAVA, 1, A55),
 )
 
 private class Detection(val peaks: FloatArray, val corners: FloatArray?)
+
+private interface Engine : AutoCloseable {
+    fun infer(input: ByteBuffer, output: ByteBuffer)
+}
+
+private class JavaEngine(model: ByteBuffer, threads: Int) : Engine {
+    private val interpreter = Interpreter(model, Interpreter.Options().setNumThreads(threads).setUseXNNPACK(true))
+
+    override fun infer(input: ByteBuffer, output: ByteBuffer) {
+        input.rewind()
+        output.rewind()
+        interpreter.run(input, output)
+    }
+
+    override fun close() = interpreter.close()
+}
+
+private class NativeEngine(model: ByteBuffer, threads: Int, explicitXnnpack: Boolean) : Engine {
+    // Heap pointers are tagged on arm64 Android (negative as Long); errors are -1..-20.
+    private val handle = NativeBench.create(model, threads, explicitXnnpack).also {
+        check(it !in -20L..0L) { "native create failed: $it" }
+    }
+
+    override fun infer(input: ByteBuffer, output: ByteBuffer) {
+        val rc = NativeBench.run(handle, input, output)
+        check(rc == 0) { "native run failed: $rc" }
+    }
+
+    override fun close() = NativeBench.destroy(handle)
+}
 
 class DetectionBench(private val context: Context) {
     @Volatile
@@ -51,44 +107,38 @@ class DetectionBench(private val context: Context) {
     @Volatile
     private var pauses = 0
 
+    private val logFile = File(context.getExternalFilesDir(null), "clbench.log")
+
     fun onForeground(value: Boolean) {
         if (!value) pauses++
         foreground = value
     }
 
-    private val configs = listOf(
-        Config("all_t1", PAD_ZERO, 1),
-        Config("all_t2", PAD_ZERO, 2),
-        Config("all_t4", PAD_ZERO, 4),
-        Config("a55_t1", PAD_ZERO, 1, A55),
-        Config("a55_t2", PAD_ZERO, 2, A55),
-        Config("a55_t4", PAD_ZERO, 4, A55),
-        Config("a55_t6", PAD_ZERO, 6, A55),
-        Config("a76_t1", PAD_ZERO, 1, A76),
-        Config("a76_t2", PAD_ZERO, 2, A76),
-        Config("a55_t4_fp16", PAD_ZERO, 4, A55, fp16 = true),
-        Config("a55_t1_plain", PLAIN, 1, A55),
-        Config("a55_t4_plain", PLAIN, 4, A55),
-        Config("all_t4_noxnn", PAD_ZERO, 4, xnnpack = false, runs = 8),
-    )
-
-    fun run() {
-        log("start model=${Build.MODEL} soc=${soc()} sdk=${Build.VERSION.SDK_INT} thermal=${thermal()}")
-        val models = mapOf(PAD_ZERO to loadModel(PAD_ZERO), PLAIN to loadModel(PLAIN))
-        val doc = tensorFromBgr("bench_doc_256.bgr")
-        val nodoc = tensorFromBgr("bench_nodoc_256.bgr")
-        measured("parity") { parityAndPostTiming(models.getValue(PAD_ZERO), doc, nodoc) }
-        measured("pre") { preprocessTiming() }
-        for (pass in 1..2) {
-            for (cfg in if (pass == 1) configs else configs.reversed()) {
-                measured("cfg=${cfg.name} pass=$pass") {
-                    onFreshThread { bench(cfg, models.getValue(cfg.model), doc, pass) }
-                }
-                Thread.sleep(300)
-            }
+    /** Runs this process's step. Returns true when another step follows (the caller restarts the process). */
+    fun runStep(): Boolean {
+        val prefs = context.getSharedPreferences("clbench", Context.MODE_PRIVATE)
+        val step = prefs.getInt("step", 0)
+        if (step == 0) {
+            logFile.delete()
+            log("start model=${Build.MODEL} soc=${soc()} sdk=${Build.VERSION.SDK_INT} thermal=${thermal()} steps=${steps.size}")
         }
-        log("end thermal=${thermal()} pauses=$pauses")
-        log("DONE")
+        val model = loadModel(PAD_ZERO)
+        val doc = tensorFromBgr("bench_doc_256.bgr")
+        val cfg = steps[step]
+        if (cfg == null) {
+            val nodoc = tensorFromBgr("bench_nodoc_256.bgr")
+            measured("parity") { parityAndPostTiming(model, doc, nodoc) }
+            measured("pre") { preprocessTiming() }
+        } else {
+            measured("cfg=${cfg.name}") { onFreshThread { bench(cfg, model, doc) } }
+        }
+        val more = step + 1 < steps.size
+        prefs.edit().putInt("step", if (more) step + 1 else 0).commit()
+        if (!more) {
+            log("end thermal=${thermal()}")
+            log("DONE")
+        }
+        return more
     }
 
     // A paused app may be frozen or descheduled; such numbers are discarded and re-measured.
@@ -106,39 +156,39 @@ class DetectionBench(private val context: Context) {
         }
     }
 
-    private fun bench(cfg: Config, model: ByteBuffer, input: ByteBuffer, pass: Int) {
+    private fun bench(cfg: Config, model: ByteBuffer, input: ByteBuffer) {
         val before = threadIds()
         val pinRc = if (cfg.mask != 0) Affinity.pin(cfg.mask) else 0
-        val options = Interpreter.Options().setNumThreads(cfg.threads).setUseXNNPACK(cfg.xnnpack)
-        if (cfg.fp16) options.setAllowFp16PrecisionForFp32(true)
-        val t0 = System.nanoTime()
-        val interpreter = Interpreter(model, options)
-        val createMs = ms(t0)
         val output = newOutput()
+        val t0 = System.nanoTime()
+        val engine = when (cfg.api) {
+            Api.JAVA -> JavaEngine(model, cfg.threads)
+            Api.C_API -> NativeEngine(model, cfg.threads, explicitXnnpack = false)
+            Api.C_XNNPACK -> NativeEngine(model, cfg.threads, explicitXnnpack = true)
+        }
+        val createMs = ms(t0)
         val t1 = System.nanoTime()
-        infer(interpreter, input, output)
+        engine.infer(input, output)
         val firstMs = ms(t1)
-        repeat(4) { infer(interpreter, input, output) }
+        repeat(4) { engine.infer(input, output) }
         val wall = DoubleArray(cfg.runs)
-        val native = DoubleArray(cfg.runs)
         for (i in 0 until cfg.runs) {
             val s = System.nanoTime()
-            infer(interpreter, input, output)
+            engine.infer(input, output)
             wall[i] = ms(s)
-            native[i] = (interpreter.lastNativeInferenceDurationNanoseconds ?: 0L) / 1e6
         }
         val peaks = postprocess(output, IN, IN).peaks
         val spawned = (threadIds() - before).sorted().map(::describe)
-        interpreter.close()
+        engine.close()
         log(
-            "cfg=${cfg.name} pass=$pass model=${cfg.model} threads=${cfg.threads} " +
-                "mask=0x${Integer.toHexString(cfg.mask)} pin_rc=$pinRc xnnpack=${cfg.xnnpack} fp16=${cfg.fp16} " +
+            "cfg=${cfg.name} pid=${Process.myPid()} api=${cfg.api} threads=${cfg.threads} " +
+                "mask=0x${Integer.toHexString(cfg.mask)} pin_rc=$pinRc " +
                 "create_ms=${f(createMs)} first_ms=${f(firstMs)} n=${cfg.runs} " +
                 "p50=${f(pct(wall, 50))} p90=${f(pct(wall, 90))} mean=${f(wall.average())} " +
-                "min=${f(wall.min())} max=${f(wall.max())} native_p50=${f(pct(native, 50))} " +
+                "min=${f(wall.min())} max=${f(wall.max())} " +
                 "peaks=${peaks.joinToString(",") { f(it.toDouble(), 3) }} thermal=${thermal()} pauses=$pauses",
         )
-        log("threads cfg=${cfg.name} pass=$pass self=${describe(Process.myTid())} spawned=${spawned.size} ${spawned.joinToString(" ")}")
+        log("threads cfg=${cfg.name} self=${describe(Process.myTid())} spawned=${spawned.size} ${spawned.joinToString(" ")}")
     }
 
     private fun parityAndPostTiming(model: ByteBuffer, doc: ByteBuffer, nodoc: ByteBuffer) {
@@ -318,6 +368,7 @@ class DetectionBench(private val context: Context) {
 
     private fun log(msg: String) {
         Log.i(TAG, msg)
+        runCatching { logFile.appendText("${System.currentTimeMillis()} ${Process.myPid()} $msg\n") }
     }
 }
 
