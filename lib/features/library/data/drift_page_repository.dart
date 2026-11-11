@@ -142,7 +142,7 @@ class DriftPageRepository implements PageRepository {
         // A new render invalidates the text and its word boxes.
         ocrStatus: Value(OcrStatus.pending.name),
         ocrText: const Value(null),
-        ocrWords: const Value(null),
+        ocrLines: const Value(null),
       ),
     );
   }

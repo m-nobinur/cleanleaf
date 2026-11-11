@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'dart:developer';
-import 'dart:isolate';
 
 import 'package:drift/drift.dart';
 
 import '../../../core/storage/app_database.dart';
 import '../../../core/storage/file_store.dart';
 import '../../library/domain/document_page.dart';
-import '../domain/hocr_parser.dart';
 import '../domain/ocr_engine.dart';
 import '../domain/ocr_language.dart';
 import 'ocr_row_mapper.dart';
@@ -102,15 +100,15 @@ class OcrQueue {
         .listen((_) => _engine.cancel());
     try {
       final image = await _files.resolve(row.renderPath ?? row.originalPath);
-      final page = await _engine.recognize(image.path, language);
-      if (page == null) return;
-      final words = await _wordsJson(page.hocr);
+      final result = await _engine.recognize(image.path, language);
+      if (result == null) return;
       await _moveFrom(OcrStatus.running, row.id).write(
         PagesCompanion(
           ocrStatus: Value(OcrStatus.done.name),
-          ocrLanguage: Value(language.name),
-          ocrText: Value(page.text),
-          ocrWords: Value(words),
+          ocrEngine: Value(result.engine),
+          ocrLanguage: Value(result.language.name),
+          ocrText: Value(result.text),
+          ocrLines: Value(encodeOcrLines(result.lines)),
         ),
       );
     } catch (e, stack) {
@@ -132,7 +130,3 @@ class OcrQueue {
       _db.update(_db.pages)
         ..where((t) => t.id.equals(pageId) & t.ocrStatus.equals(status.name));
 }
-
-// Top level so the isolate closure captures only [hocr].
-Future<String> _wordsJson(String hocr) =>
-    Isolate.run(() => encodeOcrWords(parseHocrWords(hocr)));

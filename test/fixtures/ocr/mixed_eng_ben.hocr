@@ -14,20 +14,20 @@
     <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 61 58 793 189">
      <span class='ocr_line' id='line_1_1' title="bbox 64 58 793 99; baseline 0 -9; x_size 41; x_descenders 9; x_ascenders 8">
       <span class='ocrx_word' id='word_1_1' title='bbox 64 58 198 90; x_wconf 96'>Invoice</span>
-      <span class='ocrx_word' id='word_1_2' title='bbox 212 58 293 90; x_wconf 96'>#42:</span>
-      <span class='ocrx_word' id='word_1_3' title='bbox 310 58 389 90; x_wconf 90'>Tom</span>
-      <span class='ocrx_word' id='word_1_4' title='bbox 406 58 432 90; x_wconf 90'>&amp;</span>
-      <span class='ocrx_word' id='word_1_5' title='bbox 447 58 542 99; x_wconf 92'>Jerry</span>
-      <span class='ocrx_word' id='word_1_6' title='bbox 558 58 665 90; x_wconf 90'>&lt;Ltd&gt;</span>
-      <span class='ocrx_word' id='word_1_7' title='bbox 682 58 793 99; x_wconf 88'>&quot;paid&quot;</span>
+      <span class='ocrx_word' id='word_1_2' title='bbox 212 58 293 90; x_wconf 95'>#42:</span>
+      <span class='ocrx_word' id='word_1_3' title='bbox 310 58 389 90; x_wconf 93'>Tom</span>
+      <span class='ocrx_word' id='word_1_4' title='bbox 406 58 432 90; x_wconf 93'>&amp;</span>
+      <span class='ocrx_word' id='word_1_5' title='bbox 447 58 542 99; x_wconf 93'>Jerry</span>
+      <span class='ocrx_word' id='word_1_6' title='bbox 558 58 665 90; x_wconf 88'>&lt;Ltd&gt;</span>
+      <span class='ocrx_word' id='word_1_7' title='bbox 682 58 793 99; x_wconf 76'>&quot;paid&quot;</span>
      </span>
      <span class='ocr_line' id='line_1_2' title="bbox 61 148 667 189; baseline 0 -9; x_size 39; x_descenders 7; x_ascenders 8">
       <span class='ocrx_word' id='word_1_8' title='bbox 61 148 150 180; x_wconf 95'>Total</span>
-      <span class='ocrx_word' id='word_1_9' title='bbox 170 148 273 187; x_wconf 95'>1,250</span>
+      <span class='ocrx_word' id='word_1_9' title='bbox 170 148 273 187; x_wconf 96'>1,250</span>
       <span class='ocrx_word' id='word_1_10' title='bbox 288 148 388 187; x_wconf 96'>Taka,</span>
-      <span class='ocrx_word' id='word_1_11' title='bbox 407 148 454 180; x_wconf 93'>it&#39;s</span>
-      <span class='ocrx_word' id='word_1_12' title='bbox 470 148 541 180; x_wconf 95'>due</span>
-      <span class='ocrx_word' id='word_1_13' title='bbox 555 148 667 189; x_wconf 96'>today.</span>
+      <span class='ocrx_word' id='word_1_11' title='bbox 407 148 454 180; x_wconf 96'>it&#39;s</span>
+      <span class='ocrx_word' id='word_1_12' title='bbox 470 148 541 180; x_wconf 96'>due</span>
+      <span class='ocrx_word' id='word_1_13' title='bbox 555 148 667 189; x_wconf 95'>today.</span>
      </span>
     </p>
    </div>

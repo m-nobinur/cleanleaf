@@ -198,7 +198,11 @@ class FlutterError (
   val details: Any? = null
 ) : RuntimeException()
 
-/** Generated class from Pigeon that represents data sent in messages. */
+/**
+ * Every engine answers in hOCR, so Dart has one parser for all of them.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
 data class OcrPage (
   val text: String,
   val hocr: String
@@ -264,10 +268,11 @@ private open class OcrApiPigeonCodec : StandardMessageCodec() {
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface OcrHostApi {
   /**
-   * Reads the image with Tesseract [languages] (e.g. `eng+ben`), downscaled
-   * to [maxLongSide] px first when > 0. Null when [cancel] stopped it.
+   * Reads the image with [engine] (e.g. `tesseract`) in [language] (an
+   * `OcrLanguage` name), downscaled to [maxLongSide] px first when > 0.
+   * Null when [cancel] stopped it.
    */
-  suspend fun recognize(imagePath: String, languages: String, maxLongSide: Long): OcrPage?
+  suspend fun recognize(engine: String, imagePath: String, language: String, maxLongSide: Long): OcrPage?
   fun cancel()
 
   companion object {
@@ -284,12 +289,13 @@ interface OcrHostApi {
         if (api != null) {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
-            val imagePathArg = args[0] as String
-            val languagesArg = args[1] as String
-            val maxLongSideArg = args[2] as Long
+            val engineArg = args[0] as String
+            val imagePathArg = args[1] as String
+            val languageArg = args[2] as String
+            val maxLongSideArg = args[3] as Long
             CoroutineScope(Dispatchers.Main).launch {
               val wrapped: List<Any?> = try {
-                listOf(api.recognize(imagePathArg, languagesArg, maxLongSideArg))
+                listOf(api.recognize(engineArg, imagePathArg, languageArg, maxLongSideArg))
               } catch (exception: Throwable) {
                 OcrApiPigeonUtils.wrapError(exception)
               }

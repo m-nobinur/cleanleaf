@@ -8,10 +8,9 @@ Tesseract OCR 5.5.1
 Copyright (C) Hewlett-Packard Company, Google Inc. and the Tesseract OCR contributors
 https://github.com/tesseract-ocr/tesseract
 
-Trained data: tessdata_best ben.traineddata (commit e12c65a9) and tessdata_fast eng.traineddata (commit 87416418)
+Trained data: tessdata_best ben.traineddata and eng.traineddata (commit e12c65a9)
 Copyright (C) Google Inc. and the Tesseract OCR contributors
 https://github.com/tesseract-ocr/tessdata_best
-https://github.com/tesseract-ocr/tessdata_fast
 
 libpng (bundled by Tesseract4Android) is covered by the libpng notice.
 

@@ -229,46 +229,6 @@
             "default_dart": null,
             "default_client_dart": null,
             "dsl_features": []
-          },
-          {
-            "name": "ocr_status",
-            "getter_name": "ocrStatus",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "ocr_language",
-            "getter_name": "ocrLanguage",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "ocr_text",
-            "getter_name": "ocrText",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "ocr_words",
-            "getter_name": "ocrWords",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
           }
         ],
         "is_virtual": false,
@@ -314,7 +274,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"pages\" (\"id\" TEXT NOT NULL, \"document_id\" TEXT NOT NULL REFERENCES documents (id) ON DELETE CASCADE, \"page_index\" INTEGER NOT NULL, \"original_path\" TEXT NOT NULL, \"corners\" TEXT NOT NULL, \"detected_corners\" TEXT NULL, \"source\" TEXT NOT NULL, \"anchors\" TEXT NOT NULL, \"rotation\" INTEGER NOT NULL, \"filter\" TEXT NOT NULL, \"filter_params\" TEXT NOT NULL, \"render_path\" TEXT NULL, \"thumb_path\" TEXT NULL, \"ocr_status\" TEXT NULL, \"ocr_language\" TEXT NULL, \"ocr_text\" TEXT NULL, \"ocr_words\" TEXT NULL, PRIMARY KEY (\"id\"));"
+          "sql": "CREATE TABLE IF NOT EXISTS \"pages\" (\"id\" TEXT NOT NULL, \"document_id\" TEXT NOT NULL REFERENCES documents (id) ON DELETE CASCADE, \"page_index\" INTEGER NOT NULL, \"original_path\" TEXT NOT NULL, \"corners\" TEXT NOT NULL, \"detected_corners\" TEXT NULL, \"source\" TEXT NOT NULL, \"anchors\" TEXT NOT NULL, \"rotation\" INTEGER NOT NULL, \"filter\" TEXT NOT NULL, \"filter_params\" TEXT NOT NULL, \"render_path\" TEXT NULL, \"thumb_path\" TEXT NULL, PRIMARY KEY (\"id\"));"
         }
       ]
     },

@@ -8,6 +8,7 @@ import 'package:pigeon/pigeon.dart';
     kotlinOptions: KotlinOptions(package: 'com.bnwise.cleanleaf.ocr'),
   ),
 )
+/// Every engine answers in hOCR, so Dart has one parser for all of them.
 class OcrPage {
   OcrPage({required this.text, required this.hocr});
 
@@ -17,10 +18,16 @@ class OcrPage {
 
 @HostApi()
 abstract class OcrHostApi {
-  /// Reads the image with Tesseract [languages] (e.g. `eng+ben`), downscaled
-  /// to [maxLongSide] px first when > 0. Null when [cancel] stopped it.
+  /// Reads the image with [engine] (e.g. `tesseract`) in [language] (an
+  /// `OcrLanguage` name), downscaled to [maxLongSide] px first when > 0.
+  /// Null when [cancel] stopped it.
   @async
-  OcrPage? recognize(String imagePath, String languages, int maxLongSide);
+  OcrPage? recognize(
+    String engine,
+    String imagePath,
+    String language,
+    int maxLongSide,
+  );
 
   void cancel();
 }

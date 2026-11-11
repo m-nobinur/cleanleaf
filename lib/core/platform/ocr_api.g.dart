@@ -97,6 +97,7 @@ int _deepHash(Object? value) {
   return value.hashCode;
 }
 
+/// Every engine answers in hOCR, so Dart has one parser for all of them.
 class OcrPage {
   OcrPage({required this.text, required this.hocr});
 
@@ -182,11 +183,13 @@ class OcrHostApi {
 
   final String pigeonVar_messageChannelSuffix;
 
-  /// Reads the image with Tesseract [languages] (e.g. `eng+ben`), downscaled
-  /// to [maxLongSide] px first when > 0. Null when [cancel] stopped it.
+  /// Reads the image with [engine] (e.g. `tesseract`) in [language] (an
+  /// `OcrLanguage` name), downscaled to [maxLongSide] px first when > 0.
+  /// Null when [cancel] stopped it.
   Future<OcrPage?> recognize(
+    String engine,
     String imagePath,
-    String languages,
+    String language,
     int maxLongSide,
   ) async {
     final pigeonVar_channelName =
@@ -197,7 +200,7 @@ class OcrHostApi {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[imagePath, languages, maxLongSide],
+      <Object?>[engine, imagePath, language, maxLongSide],
     );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(

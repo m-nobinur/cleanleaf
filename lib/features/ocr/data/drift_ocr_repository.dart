@@ -55,11 +55,7 @@ class DriftOcrRepository implements OcrRepository {
     if (read == null || read.ocrStatus != OcrStatus.done.name) {
       throw OcrFailed(pageId);
     }
-    return OcrResult(
-      read.ocrText ?? '',
-      words: decodeOcrWords(read.ocrWords ?? '[]'),
-      language: ocrLanguageOf(read),
-    );
+    return ocrResultOf(read);
   }
 
   @override
