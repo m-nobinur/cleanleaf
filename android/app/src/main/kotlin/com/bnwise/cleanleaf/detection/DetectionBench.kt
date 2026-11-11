@@ -46,7 +46,15 @@ private class Detection(val peaks: FloatArray, val corners: FloatArray?)
 
 class DetectionBench(private val context: Context) {
     @Volatile
-    var interrupted = false
+    private var foreground = false
+
+    @Volatile
+    private var pauses = 0
+
+    fun onForeground(value: Boolean) {
+        if (!value) pauses++
+        foreground = value
+    }
 
     private val configs = listOf(
         Config("all_t1", PAD_ZERO, 1),
@@ -55,6 +63,7 @@ class DetectionBench(private val context: Context) {
         Config("a55_t1", PAD_ZERO, 1, A55),
         Config("a55_t2", PAD_ZERO, 2, A55),
         Config("a55_t4", PAD_ZERO, 4, A55),
+        Config("a55_t6", PAD_ZERO, 6, A55),
         Config("a76_t1", PAD_ZERO, 1, A76),
         Config("a76_t2", PAD_ZERO, 2, A76),
         Config("a55_t4_fp16", PAD_ZERO, 4, A55, fp16 = true),
@@ -68,16 +77,33 @@ class DetectionBench(private val context: Context) {
         val models = mapOf(PAD_ZERO to loadModel(PAD_ZERO), PLAIN to loadModel(PLAIN))
         val doc = tensorFromBgr("bench_doc_256.bgr")
         val nodoc = tensorFromBgr("bench_nodoc_256.bgr")
-        parityAndPostTiming(models.getValue(PAD_ZERO), doc, nodoc)
-        preprocessTiming()
+        measured("parity") { parityAndPostTiming(models.getValue(PAD_ZERO), doc, nodoc) }
+        measured("pre") { preprocessTiming() }
         for (pass in 1..2) {
             for (cfg in if (pass == 1) configs else configs.reversed()) {
-                onFreshThread { bench(cfg, models.getValue(cfg.model), doc, pass) }
+                measured("cfg=${cfg.name} pass=$pass") {
+                    onFreshThread { bench(cfg, models.getValue(cfg.model), doc, pass) }
+                }
                 Thread.sleep(300)
             }
         }
-        log("end thermal=${thermal()} interrupted=$interrupted")
+        log("end thermal=${thermal()} pauses=$pauses")
         log("DONE")
+    }
+
+    // A paused app may be frozen or descheduled; such numbers are discarded and re-measured.
+    private fun measured(label: String, block: () -> Unit) {
+        repeat(3) { attempt ->
+            if (!foreground) {
+                log("waiting for foreground before $label")
+                while (!foreground) Thread.sleep(200)
+                Thread.sleep(1000)
+            }
+            val before = pauses
+            block()
+            if (pauses == before) return
+            log("$label invalid: paused during run (attempt ${attempt + 1})")
+        }
     }
 
     private fun bench(cfg: Config, model: ByteBuffer, input: ByteBuffer, pass: Int) {
@@ -110,7 +136,7 @@ class DetectionBench(private val context: Context) {
                 "create_ms=${f(createMs)} first_ms=${f(firstMs)} n=${cfg.runs} " +
                 "p50=${f(pct(wall, 50))} p90=${f(pct(wall, 90))} mean=${f(wall.average())} " +
                 "min=${f(wall.min())} max=${f(wall.max())} native_p50=${f(pct(native, 50))} " +
-                "peaks=${peaks.joinToString(",") { f(it.toDouble(), 3) }} thermal=${thermal()} interrupted=$interrupted",
+                "peaks=${peaks.joinToString(",") { f(it.toDouble(), 3) }} thermal=${thermal()} pauses=$pauses",
         )
         log("threads cfg=${cfg.name} pass=$pass self=${describe(Process.myTid())} spawned=${spawned.size} ${spawned.joinToString(" ")}")
     }

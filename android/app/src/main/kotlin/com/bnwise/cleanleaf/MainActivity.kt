@@ -2,12 +2,14 @@ package com.bnwise.cleanleaf
 
 import android.os.Bundle
 import android.util.Log
+import android.view.WindowManager
 import com.bnwise.cleanleaf.detection.DetectionBench
 import io.flutter.embedding.android.FlutterActivity
 
 class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         if (bench == null) {
             val b = DetectionBench(applicationContext)
             bench = b
@@ -21,9 +23,15 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        bench?.onForeground(true)
+        Log.i("CLBENCH", "onResume")
+    }
+
     override fun onPause() {
         super.onPause()
-        bench?.interrupted = true
+        bench?.onForeground(false)
         Log.i("CLBENCH", "onPause")
     }
 
