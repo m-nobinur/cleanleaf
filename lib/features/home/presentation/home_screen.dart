@@ -8,6 +8,7 @@ import '../../../core/licenses/about_sheet.dart';
 import '../../capture/domain/scan_mode.dart';
 import '../../capture/presentation/scan_mode_sheet.dart';
 import '../../export/data/export_providers.dart';
+import '../../gallery_import/presentation/import_from_gallery.dart';
 import '../../library/data/library_providers.dart';
 import '../../library/domain/document.dart';
 import '../../library/domain/document_repository.dart';
@@ -159,6 +160,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   onHelp: () => showAboutSheet(context),
                   onSettings: () => showSettingsSheet(context),
                   onScan: _chooseModeAndScan,
+                  onImport: () => importFromGallery(context, ref),
                   onExport: visible == null || visible.isEmpty
                       ? null
                       : () => _export(visible),
