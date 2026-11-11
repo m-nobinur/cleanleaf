@@ -21,4 +21,23 @@ abstract final class ScanMetrics {
       'CLMETRIC scan_saved engine=$_engine ms=${watch.elapsedMilliseconds}',
     );
   }
+
+  static var _liveFrames = 0;
+  static var _liveQuads = 0;
+  static Stopwatch? _liveWatch;
+
+  /// Counts live detections reaching the camera screen and logs their rate
+  /// every 5 s: `CLMETRIC live fps=<f> quads=<n>`.
+  static void liveFrame({required bool hasQuad}) {
+    final watch = _liveWatch ??= Stopwatch()..start();
+    _liveFrames++;
+    if (hasQuad) _liveQuads++;
+    final ms = watch.elapsedMilliseconds;
+    if (ms < 5000) return;
+    final fps = (_liveFrames * 1000 / ms).toStringAsFixed(1);
+    debugPrint('CLMETRIC live fps=$fps quads=$_liveQuads');
+    _liveFrames = 0;
+    _liveQuads = 0;
+    watch.reset();
+  }
 }
