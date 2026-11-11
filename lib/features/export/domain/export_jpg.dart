@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../../library/domain/document_page.dart';
 import '../../library/domain/document_repository.dart';
 import '../../library/domain/page_repository.dart';
 import 'pdf_file_name.dart';
@@ -22,27 +23,50 @@ class ExportJpg {
   final Future<File> Function(String relativePath) resolve;
   final Future<Directory> Function() outputDir;
 
-  Future<List<File>> call(String documentId) async {
-    final document = await documents.get(documentId);
-    if (document == null) throw StateError('No document $documentId');
-    final docPages = await pages.getByDocument(documentId);
-    if (docPages.isEmpty) throw StateError('Document $documentId has no pages');
+  Future<List<File>> call(String documentId) => exportPageImages(
+    documents: documents,
+    pages: pages,
+    outputDir: outputDir,
+    documentId: documentId,
+    extension: 'jpg',
+    write: (page, path) async =>
+        (await resolve(page.renderPath ?? page.originalPath)).copy(path),
+  );
+}
 
-    final dir = Directory(p.join((await outputDir()).path, documentId, 'jpg'));
-    if (dir.existsSync()) await dir.delete(recursive: true);
-    await dir.create(recursive: true);
-    final base = pdfFileName(document.title);
-    final width = docPages.length.toString().length.clamp(2, 4);
-    return [
-      for (final (i, page) in docPages.indexed)
-        await (await resolve(page.renderPath ?? page.originalPath)).copy(
-          p.join(
-            dir.path,
-            docPages.length == 1
-                ? '$base.jpg'
-                : '$base-${'${i + 1}'.padLeft(width, '0')}.jpg',
-          ),
+/// Writes each page of the document with [write] into a fresh
+/// `<documentId>/<extension>` folder, as `<title>.<extension>` for one page or
+/// `<title>-01.<extension>`, … for several.
+Future<List<File>> exportPageImages({
+  required DocumentRepository documents,
+  required PageRepository pages,
+  required Future<Directory> Function() outputDir,
+  required String documentId,
+  required String extension,
+  required Future<File> Function(DocumentPage page, String path) write,
+}) async {
+  final document = await documents.get(documentId);
+  if (document == null) throw StateError('No document $documentId');
+  final docPages = await pages.getByDocument(documentId);
+  if (docPages.isEmpty) throw StateError('Document $documentId has no pages');
+
+  final dir = Directory(
+    p.join((await outputDir()).path, documentId, extension),
+  );
+  if (dir.existsSync()) await dir.delete(recursive: true);
+  await dir.create(recursive: true);
+  final base = pdfFileName(document.title);
+  final width = docPages.length.toString().length.clamp(2, 4);
+  return [
+    for (final (i, page) in docPages.indexed)
+      await write(
+        page,
+        p.join(
+          dir.path,
+          docPages.length == 1
+              ? '$base.$extension'
+              : '$base-${'${i + 1}'.padLeft(width, '0')}.$extension',
         ),
-    ];
-  }
+      ),
+  ];
 }

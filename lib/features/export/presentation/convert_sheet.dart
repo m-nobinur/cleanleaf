@@ -41,6 +41,7 @@ Future<void> shareDocumentAs(
     await switch (format) {
       ConvertFormat.pdf => ref.read(shareDocumentPdfProvider)(documentId),
       ConvertFormat.jpg => ref.read(shareDocumentJpgProvider)(documentId),
+      ConvertFormat.png => ref.read(shareDocumentPngProvider)(documentId),
     };
   } on Object {
     if (!context.mounted) return;
@@ -49,7 +50,8 @@ Future<void> shareDocumentAs(
         offset: toastOffset,
         title: Text(switch (format) {
           ConvertFormat.pdf => 'Could not export this PDF',
-          ConvertFormat.jpg => 'Could not export the images',
+          ConvertFormat.jpg ||
+          ConvertFormat.png => 'Could not export the images',
         }),
       ),
     );
@@ -84,6 +86,12 @@ class _ConvertSheet extends StatelessWidget {
               icon: LucideIcons.image,
               label: 'JPG',
               caption: 'One image per page',
+            ),
+            _FormatTile(
+              format: ConvertFormat.png,
+              icon: LucideIcons.fileImage,
+              label: 'PNG',
+              caption: 'Lossless, one image per page',
             ),
           ],
         ),

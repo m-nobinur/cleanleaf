@@ -46,9 +46,19 @@ cv::Size outputSize(cv::Size2d natural, float aspect, int maxLongSide) {
   return {std::max(1, int(std::lround(w))), std::max(1, int(std::lround(h)))};
 }
 
-// The warp step: flattens the quad to `size` and turns it `rotation` degrees clockwise in the
-// same pass. Phase 2 anchors (Coons patch) replace this with a remap over the same inputs.
-cv::Mat flatten(const cv::Mat& src, const float* quad, cv::Size size, int rotation) {
+// How far a page turned `degrees` must be enlarged to cover its own frame: the frame turned
+// back must fit inside the enlarged page.
+double fillScale(cv::Size size, double degrees) {
+  const double a = degrees * CV_PI / 180, c = std::abs(std::cos(a)), s = std::abs(std::sin(a));
+  const double wh = double(size.width) / size.height;
+  return std::max(c + s / wh, c + s * wh);
+}
+
+// The warp step: flattens the quad to `size`, turns it `rotation` degrees clockwise and then
+// `straighten` degrees about its centre, all in one resampling pass. Phase 2 anchors (Coons
+// patch) replace this with a remap over the same inputs.
+cv::Mat flatten(const cv::Mat& src, const float* quad, cv::Size size, int rotation,
+                double straighten) {
   if (rotation % 180 != 0) size = {size.height, size.width};
   cv::Point2f s[4];
   toPixels(quad, src.size(), s);
@@ -60,9 +70,17 @@ cv::Mat flatten(const cv::Mat& src, const float* quad, cv::Size size, int rotati
     s[i] -= cv::Point2f(0.5f, 0.5f);
     d[i] = out[(i + rotation / 90) % 4];  // each quarter turn moves a corner one place on
   }
+  cv::Mat transform = cv::getPerspectiveTransform(s, d);
+  if (straighten != 0) {
+    cv::Mat turn = cv::Mat::eye(3, 3, CV_64F);
+    const cv::Point2f centre((size.width - 1) * 0.5f, (size.height - 1) * 0.5f);
+    // OpenCV's positive angle turns counter-clockwise.
+    cv::getRotationMatrix2D(centre, -straighten, fillScale(size, straighten))
+        .copyTo(turn.rowRange(0, 2));
+    transform = turn * transform;
+  }
   cv::Mat page;
-  cv::warpPerspective(src, page, cv::getPerspectiveTransform(s, d), size, cv::INTER_CUBIC,
-                      cv::BORDER_REPLICATE);
+  cv::warpPerspective(src, page, transform, size, cv::INTER_CUBIC, cv::BORDER_REPLICATE);
   return page;
 }
 
@@ -133,19 +151,42 @@ void levels(cv::Mat& page) {
   cv::LUT(page, lut, page);
 }
 
-void boostSaturation(cv::Mat& page) {
+// Pushes colours away from (amount > 0) or towards (amount < 0, -1 is grey) their luma.
+void saturate(cv::Mat& page, double amount) {
   cv::Mat gray;
   cv::cvtColor(page, gray, cv::COLOR_BGR2GRAY);
   cv::cvtColor(gray, gray, cv::COLOR_GRAY2BGR);
-  cv::addWeighted(page, 1.3, gray, -0.3, 0, page);
+  cv::addWeighted(page, 1 + amount, gray, -amount, 0, page);
 }
 
-// Sigma follows the page size so a capped preview looks like the full render.
-void unsharp(cv::Mat& page) {
+// Sharpens for amount > 0, blurs towards the Gaussian at -1. Sigma follows the page size so a
+// capped preview looks like the full render.
+void unsharp(cv::Mat& page, double amount) {
   const double sigma = std::max(0.8, std::min(page.cols, page.rows) / 2000.0);
   cv::Mat blurred;
   cv::GaussianBlur(page, blurred, {0, 0}, sigma);
-  cv::addWeighted(page, 1.6, blurred, -0.6, 0, page);
+  cv::addWeighted(page, 1 + amount, blurred, -amount, 0, page);
+}
+
+// Brightness and contrast as one lookup: a gamma curve, then a gain about mid-grey. Both
+// scale by up to 2^1.5 either way.
+void tone(cv::Mat& page, double brightness, double contrast) {
+  const double gamma = std::pow(2.0, -1.5 * brightness), gain = std::pow(2.0, 1.5 * contrast);
+  cv::Mat lut(1, 256, CV_8U);
+  for (int v = 0; v < 256; ++v) {
+    const double x = std::pow(v / 255.0, gamma);
+    lut.at<uint8_t>(v) = cv::saturate_cast<uint8_t>(((x - 0.5) * gain + 0.5) * 255);
+  }
+  cv::LUT(page, lut, page);
+}
+
+// The manual adjustments, after the filter. A binary B&W page has no tone to shift and would
+// only grow grey edges, so it keeps none of them.
+void adjust(cv::Mat& page, const clv_render_params& p) {
+  if (p.filter == CLV_FILTER_BLACK_WHITE) return;
+  if (p.brightness != 0 || p.contrast != 0) tone(page, p.brightness, p.contrast);
+  if (p.saturation != 0 && page.channels() == 3) saturate(page, p.saturation);
+  if (p.sharpness != 0) unsharp(page, p.sharpness > 0 ? 1.5 * p.sharpness : p.sharpness);
 }
 
 // Drops ink blobs too small to be a full stop at this page size.
@@ -203,13 +244,13 @@ void applyFilter(cv::Mat& page, int filter) {
     case CLV_FILTER_ENHANCED_COLOR:
       divideBackground(page);
       levels(page);
-      boostSaturation(page);
-      unsharp(page);
+      saturate(page, 0.3);
+      unsharp(page, 0.6);
       break;
     case CLV_FILTER_GRAYSCALE:
       divideBackground(page);
       levels(page);
-      unsharp(page);
+      unsharp(page, 0.6);
       break;
     case CLV_FILTER_BLACK_WHITE:
       blackWhite(page);
@@ -219,11 +260,12 @@ void applyFilter(cv::Mat& page, int filter) {
   }
 }
 
-int32_t encodeJpeg(const cv::Mat& image, uint8_t** out, int32_t* length) {
+int32_t encode(const cv::Mat& image, bool png, uint8_t** out, int32_t* length) {
   std::vector<uchar> buf;
-  if (!cv::imencode(".jpg", image, buf, {cv::IMWRITE_JPEG_QUALITY, CLV_JPEG_QUALITY})) {
-    return CLV_ERR_ENCODE;
-  }
+  const bool encoded = png ? cv::imencode(".png", image, buf)
+                           : cv::imencode(".jpg", image, buf,
+                                          {cv::IMWRITE_JPEG_QUALITY, CLV_JPEG_QUALITY});
+  if (!encoded) return CLV_ERR_ENCODE;
   auto* copy = static_cast<uint8_t*>(std::malloc(buf.size()));
   if (copy == nullptr) return CLV_ERR_INTERNAL;
   std::memcpy(copy, buf.data(), buf.size());
@@ -235,6 +277,15 @@ int32_t encodeJpeg(const cv::Mat& image, uint8_t** out, int32_t* length) {
 // Decoding applies the EXIF orientation, matching the space corners are stored in.
 cv::Mat decode(const uint8_t* encoded, int32_t length, int flags) {
   return cv::imdecode(cv::Mat(1, length, CV_8U, const_cast<uint8_t*>(encoded)), flags);
+}
+
+// Also false for NaN.
+bool within(float value, float limit) { return std::abs(value) <= limit; }
+
+bool validAdjustments(const clv_render_params& p) {
+  return within(p.brightness, 1) && within(p.contrast, 1) && within(p.saturation, 1) &&
+         within(p.sharpness, 1) && within(p.straighten_degrees, 45) &&
+         (p.encode_png == 0 || p.encode_png == 1);
 }
 
 bool validQuad(const float* quad) {
@@ -249,7 +300,8 @@ int32_t renderPage(const uint8_t* encoded, int32_t length, const float* quad,
   const int rotation = ((params.rotation_degrees % 360) + 360) % 360;
   if (params.filter < CLV_FILTER_ORIGINAL || params.filter > CLV_FILTER_BLACK_WHITE ||
       rotation % 90 != 0 || !(params.aspect_ratio == 0.f || params.aspect_ratio >= 1.f) ||
-      std::isinf(params.aspect_ratio) || params.max_long_side < 0 || !validQuad(quad)) {
+      std::isinf(params.aspect_ratio) || params.max_long_side < 0 || !validQuad(quad) ||
+      !validAdjustments(params)) {
     return CLV_ERR_INVALID_ARGUMENT;
   }
   const bool gray =
@@ -265,14 +317,17 @@ int32_t renderPage(const uint8_t* encoded, int32_t length, const float* quad,
     return CLV_ERR_INVALID_ARGUMENT;
   }
   const cv::Size size = outputSize(natural, params.aspect_ratio, params.max_long_side);
+  const double straighten = params.straighten_degrees;
   // Cubic sampling aliases when it shrinks a lot, so shrink the source by area first.
-  const double scale = std::max(size.width / natural.width, size.height / natural.height);
+  const double scale = std::max(size.width / natural.width, size.height / natural.height) *
+                       (straighten != 0 ? fillScale(size, straighten) : 1);
   if (scale < 0.5) cv::resize(src, src, {}, scale, scale, cv::INTER_AREA);
 
-  cv::Mat page = flatten(src, quad, size, rotation);
+  cv::Mat page = flatten(src, quad, size, rotation, straighten);
   src.release();
   applyFilter(page, params.filter);
-  return encodeJpeg(page, out, outLength);
+  adjust(page, params);
+  return encode(page, params.encode_png == 1, out, outLength);
 }
 
 int32_t thumbnail(const uint8_t* encoded, int32_t length, int32_t maxSide, uint8_t** out,
@@ -286,7 +341,7 @@ int32_t thumbnail(const uint8_t* encoded, int32_t length, int32_t maxSide, uint8
                         std::max(1, int(std::lround(image.rows * scale))));
     cv::resize(image, image, size, 0, 0, cv::INTER_AREA);
   }
-  return encodeJpeg(image, out, outLength);
+  return encode(image, false, out, outLength);
 }
 
 template <typename F>

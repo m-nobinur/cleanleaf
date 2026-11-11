@@ -46,6 +46,20 @@ final class ClvRenderParams extends Struct {
   external double aspectRatio;
   @Int32()
   external int maxLongSide;
+  @Float()
+  external double brightness;
+  @Float()
+  external double contrast;
+  @Float()
+  external double saturation;
+  @Float()
+  external double sharpness;
+  @Float()
+  external double straightenDegrees;
+
+  /// 1 encodes PNG instead of JPEG.
+  @Int32()
+  external int encodePng;
 }
 
 @Native<Pointer<Utf8> Function()>(symbol: 'clv_opencv_version', isLeaf: true)

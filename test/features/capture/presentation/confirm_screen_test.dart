@@ -42,6 +42,7 @@ class _Renderer extends Fake implements PageRenderer {
     PageFilter filter,
     Map<String, double> params, {
     int maxLongSide = 0,
+    bool png = false,
   }) async {
     quads.add(quad);
     filters.add(filter);
