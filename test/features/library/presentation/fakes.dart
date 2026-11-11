@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cleanleaf/core/storage/settings_store.dart';
 import 'package:cleanleaf/features/library/domain/document.dart';
 import 'package:cleanleaf/features/library/domain/document_page.dart';
 import 'package:cleanleaf/features/library/domain/document_repository.dart';
@@ -79,3 +80,13 @@ DocumentPage fakePage(String id, String documentId, int index) => DocumentPage(
   originalPath: 'docs/$documentId/$id/original.jpg',
   corners: fullFrame,
 );
+
+class MemorySettingsStore implements SettingsStore {
+  final _values = <String, String>{};
+
+  @override
+  Future<String?> read(String key) async => _values[key];
+
+  @override
+  Future<void> write(String key, String value) async => _values[key] = value;
+}

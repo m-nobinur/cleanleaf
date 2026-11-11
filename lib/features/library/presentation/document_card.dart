@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/radii.dart';
 import '../../../core/theme/spacing.dart';
 import '../domain/document.dart';
 import 'library_providers.dart';
@@ -32,7 +33,6 @@ class DocumentCard extends ConsumerWidget {
         '$count ${count == 1 ? 'page' : 'pages'} · '
         '${DateFormat('d MMM yyyy').format(document.updatedAt)}';
     final thumb = _Thumbnail(path: pages?.firstOrNull?.thumbPath);
-    final radius = BorderRadius.circular(Spacing.lg);
 
     final caption = Row(
       children: [
@@ -46,15 +46,17 @@ class DocumentCard extends ConsumerWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.small.copyWith(
-                  color: theme.colorScheme.primaryForeground,
+                  color: theme.colorScheme.foreground,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
+              const SizedBox(height: 2),
               Text(
                 meta,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.muted.copyWith(
-                  fontSize: 12,
+                style: theme.textTheme.monoMeta.copyWith(
+                  fontSize: 11,
                   color: theme.colorScheme.mutedForeground,
                 ),
               ),
@@ -64,10 +66,12 @@ class DocumentCard extends ConsumerWidget {
         Semantics(
           label: 'More actions for ${document.title}',
           button: true,
+          excludeSemantics: true,
+          onTap: onMenu,
           child: ShadIconButton.ghost(
             width: 40,
             height: 40,
-            foregroundColor: theme.colorScheme.primaryForeground,
+            foregroundColor: theme.colorScheme.mutedForeground,
             icon: const Icon(LucideIcons.ellipsis, size: 18),
             onPressed: onMenu,
           ),
@@ -75,10 +79,10 @@ class DocumentCard extends ConsumerWidget {
       ],
     );
 
-    final captionBar = Container(
-      color: Brand.ink,
-      padding: const EdgeInsets.only(left: Spacing.md),
-      child: caption,
+    const inset = Spacing.sm;
+    final framedThumb = ClipRRect(
+      borderRadius: BorderRadius.circular(Radii.md - inset),
+      child: thumb,
     );
 
     return Semantics(
@@ -88,26 +92,30 @@ class DocumentCard extends ConsumerWidget {
         onTap: onTap,
         onLongPress: onMenu,
         child: Container(
-          clipBehavior: Clip.antiAlias,
+          padding: const EdgeInsets.all(inset),
           decoration: BoxDecoration(
             color: theme.colorScheme.card,
-            borderRadius: radius,
-            border: Border.all(color: theme.colorScheme.border),
+            borderRadius: BorderRadius.circular(Radii.md),
+            border: Border.all(color: theme.colorScheme.hairline),
           ),
           child: switch (layout) {
             LibraryLayout.grid => Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(child: thumb),
-                captionBar,
+                Expanded(child: framedThumb),
+                Padding(
+                  padding: const EdgeInsets.only(left: Spacing.xs, top: 2),
+                  child: caption,
+                ),
               ],
             ),
             LibraryLayout.list => SizedBox(
-              height: 72,
+              height: 64,
               child: Row(
                 children: [
-                  AspectRatio(aspectRatio: 1, child: thumb),
-                  Expanded(child: captionBar),
+                  AspectRatio(aspectRatio: 1, child: framedThumb),
+                  const SizedBox(width: Spacing.md),
+                  Expanded(child: caption),
                 ],
               ),
             ),
