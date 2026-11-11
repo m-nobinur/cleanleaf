@@ -348,6 +348,14 @@ void main() {
       await tester.pumpAndSettle();
       // B&W survived the trip too: tone has no effect on it.
       expect(find.text('No effect on B&W'), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel(RegExp('^Saturation')));
+      await tester.pumpAndSettle();
+      expect(find.text('No effect on B&W'), findsOneWidget);
+      expect(find.byType(ShadSlider), findsOneWidget);
+      expect(
+        tester.widget<ShadSlider>(find.byType(ShadSlider)).enabled,
+        isFalse,
+      );
     });
   });
 }
