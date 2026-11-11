@@ -183,7 +183,7 @@ def main() -> None:
         im = light_and_camera(im, rng, shadow)
         name = f"s{n:03d}.jpg"
         cv2.imwrite(str(out / name), im, [cv2.IMWRITE_JPEG_QUALITY, 95])
-        corners = canonical(dst) / [W, H]
+        corners = canonical(dst / [W, H])  # T-007 order: min x+y in normalized coords
         labels[name] = {"corners": corners.round(5).tolist(),
                         "tags": tags + [pkind] + (["shadow"] if shadow else [])}
     for i in range(20):
