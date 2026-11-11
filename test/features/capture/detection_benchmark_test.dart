@@ -133,6 +133,29 @@ void main() {
       expect(isHit(square(0), null, width: 100, height: 100), isFalse);
     });
 
+    test('any cyclic corner start matches, reversed winding does not', () {
+      const q = (
+        topLeft: (x: 0.5, y: 0.1),
+        topRight: (x: 0.9, y: 0.5),
+        bottomRight: (x: 0.5, y: 0.9),
+        bottomLeft: (x: 0.1, y: 0.5),
+      );
+      final shifted = (
+        topLeft: q.bottomLeft,
+        topRight: q.topLeft,
+        bottomRight: q.topRight,
+        bottomLeft: q.bottomRight,
+      );
+      final mirrored = (
+        topLeft: q.topLeft,
+        topRight: q.bottomLeft,
+        bottomRight: q.bottomRight,
+        bottomLeft: q.topRight,
+      );
+      expect(isHit(q, shifted, width: 100, height: 100), isTrue);
+      expect(isHit(q, mirrored, width: 100, height: 100), isFalse);
+    });
+
     test(
       'missing or empty fixture dirs report a problem instead of failing',
       () {

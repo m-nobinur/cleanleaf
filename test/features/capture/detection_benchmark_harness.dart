@@ -68,12 +68,18 @@ bool isHit(
       hitToleranceOfDiagonal * math.sqrt(width * width + height * height);
   final want = expected.corners;
   final got = actual.corners;
-  for (var i = 0; i < 4; i++) {
-    final dx = (got[i].x - want[i].x) * width;
-    final dy = (got[i].y - want[i].y) * height;
-    if (math.sqrt(dx * dx + dy * dy) > limit) return false;
+  // Any cyclic start counts: "top-left" is ambiguous for a page rotated ~45°.
+  bool matchesFrom(int shift) {
+    for (var i = 0; i < 4; i++) {
+      final g = got[(i + shift) % 4];
+      final dx = (g.x - want[i].x) * width;
+      final dy = (g.y - want[i].y) * height;
+      if (math.sqrt(dx * dx + dy * dy) > limit) return false;
+    }
+    return true;
   }
-  return true;
+
+  return List.generate(4, (s) => s).any(matchesFrom);
 }
 
 class BenchmarkReport {
