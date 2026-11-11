@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -95,117 +98,266 @@ class HoldStillPill extends StatelessWidget {
   }
 }
 
-/// The scan modes the camera can switch between, as a mono segmented pill.
-class ModeSwitch extends StatelessWidget {
-  const ModeSwitch({super.key, required this.mode, required this.onChanged});
+/// Every scan mode as a horizontally scrolling pill row; modes that aren't
+/// ready yet show "Soon". The selected pill scrolls into view.
+class ModePills extends StatefulWidget {
+  const ModePills({super.key, required this.mode, required this.onChanged});
 
   final ScanMode mode;
   final ValueChanged<ScanMode> onChanged;
 
   @override
+  State<ModePills> createState() => _ModePillsState();
+}
+
+class _ModePillsState extends State<ModePills> {
+  final _keys = {for (final m in ScanMode.values) m: GlobalKey()};
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reveal(Duration.zero));
+  }
+
+  @override
+  void didUpdateWidget(ModePills old) {
+    super.didUpdateWidget(old);
+    if (old.mode != widget.mode) {
+      _reveal(const Duration(milliseconds: 250));
+    }
+  }
+
+  void _reveal(Duration duration) {
+    final context = _keys[widget.mode]!.currentContext;
+    if (context == null || !mounted) return;
+    Scrollable.ensureVisible(
+      context,
+      alignment: 0.5,
+      duration: duration,
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final theme = ShadTheme.of(context);
-    final colors = theme.colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: Spacing.xs),
-      decoration: BoxDecoration(
-        color: colors.nav,
-        borderRadius: BorderRadius.circular(Radii.full),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final m in ScanMode.values.where((m) => m.isAvailable))
-            Semantics(
-              label: '${m.label} mode',
-              button: true,
-              selected: m == mode,
-              excludeSemantics: true,
-              onTap: () => onChanged(m),
-              // The pill is 40 dp; the padding brings each target to 48 dp.
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => onChanged(m),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOut,
-                    height: 40,
-                    alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
-                    decoration: BoxDecoration(
-                      color: m == mode ? colors.navSelected : colors.nav,
-                      borderRadius: BorderRadius.circular(Radii.full),
-                    ),
-                    child: Text(
-                      m.label.toUpperCase(),
-                      style: theme.textTheme.monoLabel.copyWith(
-                        color: m == mode ? colors.onNavSelected : colors.onNav,
-                      ),
-                    ),
-                  ),
-                ),
+    // Only the mask's alpha matters; the colour is any opaque token.
+    final opaque = ShadTheme.of(context).colorScheme.foreground;
+    return ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (rect) {
+        final fade = _fade / rect.width;
+        return LinearGradient(
+          colors: [
+            opaque.withValues(alpha: 0),
+            opaque,
+            opaque,
+            opaque.withValues(alpha: 0),
+          ],
+          stops: [0, fade, 1 - fade, 1],
+        ).createShader(rect);
+      },
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: _fade),
+        child: Row(
+          children: [
+            for (final m in ScanMode.values)
+              _ModePill(
+                key: _keys[m],
+                mode: m,
+                selected: m == widget.mode,
+                onTap: m.isAvailable ? () => widget.onChanged(m) : null,
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
+
+  static const _fade = Spacing.xl;
 }
 
-/// "AUTO" pill; the ember dot marks auto-capture as on.
-class AutoCaptureToggle extends StatelessWidget {
-  const AutoCaptureToggle({
+class _ModePill extends StatelessWidget {
+  const _ModePill({
     super.key,
-    required this.enabled,
-    required this.onChanged,
+    required this.mode,
+    required this.selected,
+    required this.onTap,
   });
 
-  final bool enabled;
-  final ValueChanged<bool> onChanged;
+  final ScanMode mode;
+  final bool selected;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
     final colors = theme.colorScheme;
+    final label = theme.textTheme.monoLabel;
+    final soon = onTap == null;
     return Semantics(
-      label: 'Auto-capture',
-      toggled: enabled,
+      label: soon ? '${mode.label} mode, coming soon' : '${mode.label} mode',
       button: true,
+      selected: selected,
+      enabled: !soon,
       excludeSemantics: true,
-      onTap: () => onChanged(!enabled),
+      onTap: onTap,
+      // The pill is 40 dp; the padding brings each target to 48 dp.
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => onChanged(!enabled),
-        child: Container(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
-          decoration: BoxDecoration(
-            color: colors.card,
-            borderRadius: BorderRadius.circular(Radii.full),
-            border: Border.all(color: colors.hairline),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedContainer(
+        onTap: onTap,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Spacing.xs / 2,
+                vertical: Spacing.xs,
+              ),
+              child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                width: 8,
-                height: 8,
+                curve: Curves.easeOut,
+                height: 40,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
                 decoration: BoxDecoration(
-                  color: enabled ? colors.highlight : colors.mutedForeground,
-                  shape: BoxShape.circle,
+                  color: selected ? colors.navSelected : colors.nav,
+                  borderRadius: BorderRadius.circular(Radii.full),
+                ),
+                child: Text(
+                  mode.label.toUpperCase(),
+                  style: label.copyWith(
+                    color: selected
+                        ? colors.onNavSelected
+                        : soon
+                        ? colors.onNav.withValues(alpha: 0.5)
+                        : colors.onNav,
+                  ),
                 ),
               ),
-              const SizedBox(width: Spacing.sm),
-              Text(
-                'AUTO',
-                style: theme.textTheme.monoLabel.copyWith(
-                  color: enabled ? colors.foreground : colors.mutedForeground,
+            ),
+            if (soon)
+              Positioned(
+                top: 0,
+                right: Spacing.xs,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: Spacing.xs),
+                  decoration: BoxDecoration(
+                    color: colors.highlight,
+                    borderRadius: BorderRadius.circular(Radii.full),
+                  ),
+                  child: Text(
+                    'SOON',
+                    style: label.copyWith(
+                      fontSize: 9,
+                      color: colors.primaryForeground,
+                    ),
+                  ),
                 ),
               ),
-            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The auto-capture chip, in the mode pills' shape: solid leaf with an ember
+/// dot when on (pulsing while a shot arms), graphite with a hollow ring when
+/// off. A toggle ticks and briefly reads "Auto: on" or "Auto: off".
+class AutoCaptureToggle extends StatefulWidget {
+  const AutoCaptureToggle({
+    super.key,
+    required this.enabled,
+    required this.onChanged,
+    this.arming = false,
+  });
+
+  final bool enabled;
+  final bool arming;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  State<AutoCaptureToggle> createState() => _AutoCaptureToggleState();
+}
+
+class _AutoCaptureToggleState extends State<AutoCaptureToggle> {
+  Timer? _announce;
+
+  @override
+  void dispose() {
+    _announce?.cancel();
+    super.dispose();
+  }
+
+  void _toggle() {
+    HapticFeedback.selectionClick();
+    _announce?.cancel();
+    _announce = Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) setState(() => _announce = null);
+    });
+    widget.onChanged(!widget.enabled);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    final colors = theme.colorScheme;
+    final on = widget.enabled;
+    final text = _announce == null ? 'AUTO' : (on ? 'AUTO: ON' : 'AUTO: OFF');
+    final ink = on ? colors.primaryForeground : colors.onNav;
+    Widget dot = Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: on ? colors.highlight : null,
+        border: on ? null : Border.all(color: ink, width: 1.5),
+      ),
+    );
+    if (on && widget.arming) {
+      dot = dot
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .fade(begin: 1, end: 0.3, duration: 600.ms)
+          .scaleXY(begin: 1, end: 0.75, duration: 600.ms);
+    }
+    return Semantics(
+      label: 'Auto-capture',
+      toggled: on,
+      button: true,
+      excludeSemantics: true,
+      onTap: _toggle,
+      // The pill is 40 dp, like the mode pills; the padding makes 48 dp.
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _toggle,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            height: 40,
+            constraints: const BoxConstraints(minWidth: 84),
+            padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+            decoration: BoxDecoration(
+              color: on ? colors.primary : colors.nav,
+              borderRadius: BorderRadius.circular(Radii.full),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                dot,
+                const SizedBox(width: Spacing.sm),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 150),
+                  child: Text(
+                    text,
+                    style: theme.textTheme.monoLabel.copyWith(color: ink),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -213,7 +365,8 @@ class AutoCaptureToggle extends StatelessWidget {
   }
 }
 
-/// Icon over a text label, for the import shortcut beside the shutter.
+/// Icon over a text label, for the import shortcut beside the shutter and
+/// the review tools; muted and inert when [onPressed] is null.
 class LabeledIconButton extends StatelessWidget {
   const LabeledIconButton({
     super.key,
@@ -224,15 +377,18 @@ class LabeledIconButton extends StatelessWidget {
 
   final IconData icon;
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
-    final color = theme.colorScheme.foreground;
+    final color = onPressed == null
+        ? theme.colorScheme.mutedForeground
+        : theme.colorScheme.foreground;
     return Semantics(
       label: label,
       button: true,
+      enabled: onPressed != null,
       excludeSemantics: true,
       onTap: onPressed,
       child: GestureDetector(
@@ -246,7 +402,12 @@ class LabeledIconButton extends StatelessWidget {
             children: [
               Icon(icon, size: 24, color: color),
               const SizedBox(height: Spacing.xs),
-              Text(label, style: theme.textTheme.small.copyWith(color: color)),
+              Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                style: theme.textTheme.small.copyWith(color: color),
+              ),
             ],
           ),
         ),

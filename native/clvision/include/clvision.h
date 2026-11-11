@@ -34,6 +34,14 @@ typedef struct clv_render_params {
   int32_t rotation_degrees;  // clockwise: 0, 90, 180, 270
   float aspect_ratio;        // long side / short side; 0 keeps the quad's own ratio
   int32_t max_long_side;     // output cap in pixels; 0 renders at full size
+  // Manual adjustments (D-49); 0 leaves the page unchanged. Tone and sharpness skip B&W,
+  // saturation skips single-channel output.
+  float brightness;          // -1..1, a gamma curve that keeps black and white
+  float contrast;            // -1..1, pivoting on mid-grey
+  float saturation;          // -1..1; -1 is grey
+  float sharpness;           // -1..1; below 0 softens
+  float straighten_degrees;  // -45..45 clockwise after rotation, zoomed so the page stays filled
+  int32_t encode_png;        // 1 encodes lossless PNG instead of JPEG
 } clv_render_params;
 
 // OpenCV version the library was linked against, e.g. "4.13.0". Static storage.
@@ -67,7 +75,8 @@ CLV_API int32_t clv_detect_image(const uint8_t* encoded, int32_t length, float* 
                                  float* confidence_out);
 
 // Warps the quad (8 normalized floats, TL, TR, BR, BL) of an encoded still to a
-// flat page, applies rotation and filter, and encodes JPEG at CLV_JPEG_QUALITY.
+// flat page, applies rotation, straighten, filter and adjustments, and encodes JPEG at
+// CLV_JPEG_QUALITY (or PNG when params->encode_png is 1).
 // On CLV_OK, *jpeg_out is owned by the caller and released with clv_free.
 CLV_API int32_t clv_render_page(const uint8_t* encoded, int32_t length, const float* quad,
                                 const clv_render_params* params, uint8_t** jpeg_out,

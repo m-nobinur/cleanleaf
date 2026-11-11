@@ -8,9 +8,11 @@ import 'package:cleanleaf/features/capture/data/capture_providers.dart';
 import 'package:cleanleaf/features/capture/domain/document_camera.dart';
 import 'package:cleanleaf/features/capture/domain/scan_mode.dart';
 import 'package:cleanleaf/features/capture/presentation/capture_screen.dart';
+import 'package:cleanleaf/features/capture/presentation/quad_overlay.dart';
 import 'package:cleanleaf/features/gallery_import/data/gallery_import.dart';
 import 'package:cleanleaf/features/gallery_import/presentation/import_from_gallery.dart';
 import 'package:cleanleaf/features/library/domain/document_page.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,9 +53,12 @@ void main() {
     WidgetTester tester, {
     ScanMode mode = ScanMode.document,
     CameraPermission permission = CameraPermission.granted,
+    MemorySettingsStore? settings,
   }) async {
     tester.view.physicalSize = const Size(412, 915);
     tester.view.devicePixelRatio = 1;
+    // A 20:9 phone's status bar and gesture bar.
+    tester.view.padding = const FakeViewPadding(top: 28, bottom: 20);
     addTearDown(tester.view.reset);
     camera = FakeCamera()..permission = permission;
     scan = FakeScan();
@@ -65,11 +70,6 @@ void main() {
           builder: (_, state) => CaptureScreen(
             mode: ScanMode.parse(state.uri.queryParameters['mode']),
           ),
-        ),
-        GoRoute(
-          path: '/confirm/:pageId',
-          builder: (_, state) =>
-              Text('confirm:${state.pathParameters['pageId']}'),
         ),
         GoRoute(
           path: '/editor/:pageId',
@@ -84,7 +84,9 @@ void main() {
         overrides: [
           documentCameraProvider.overrideWithValue(camera),
           cameraScanProvider.overrideWithValue(scan),
-          settingsStoreProvider.overrideWithValue(MemorySettingsStore()),
+          settingsStoreProvider.overrideWithValue(
+            settings ?? MemorySettingsStore(),
+          ),
           galleryImportProvider.overrideWithValue(
             GalleryImport(
               pick: () => (pick = Completer<String?>()).future,
@@ -171,8 +173,8 @@ void main() {
     expect(camera.captures, 1);
     expect(scan.calls.single.liveQuad, page);
     expect(scan.calls.single.mode, ScanMode.document);
-    expect(find.text('confirm:p1'), findsOneWidget);
-    expect(camera.stops, 1, reason: 'camera is off under the confirm screen');
+    expect(find.text('editor:p1'), findsOneWidget);
+    expect(camera.stops, 1, reason: 'camera is off under the crop review');
 
     await pop(tester);
     expect(camera.starts, 2);
@@ -194,7 +196,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(camera.captures, 1);
-    expect(find.text('confirm:p1'), findsOneWidget);
+    expect(find.text('editor:p1'), findsOneWidget);
   });
 
   testWidgets('restarts the camera when the app comes back', (tester) async {
@@ -282,5 +284,144 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(scan.calls.single.mode, ScanMode.idCard);
+  });
+
+  testWidgets('the preview fills the space between the control rows', (
+    tester,
+  ) async {
+    await pumpCapture(tester);
+    final texture = tester.getRect(find.byType(Texture));
+    // Cover-scaled 3:4 between the rows crops ~20% of the width (D-48),
+    // never the ~40% a full-bleed preview would.
+    expect(412 / texture.width, inInclusiveRange(0.75, 0.85));
+    expect(texture.center.dx, closeTo(206, 0.5));
+    // The outline is drawn in the frame's coordinates, not the view's.
+    expect(tester.getRect(find.byType(QuadOverlay)), texture);
+    expect(
+      tester.getRect(find.bySemanticsLabel('Take photo')).top,
+      greaterThanOrEqualTo(texture.bottom),
+    );
+    expect(
+      tester.getRect(find.bySemanticsLabel('Close')).bottom,
+      lessThanOrEqualTo(texture.top),
+    );
+  });
+
+  testWidgets('a tap at the preview edge focuses inside the cropped frame', (
+    tester,
+  ) async {
+    await pumpCapture(tester);
+    final texture = tester.getRect(find.byType(Texture));
+    await tester.tapAt(Offset(1, texture.center.dy));
+    await tester.pump();
+    final hidden = (texture.width - 412) / 2;
+    expect(
+      camera.focused.single.x,
+      closeTo((hidden + 1) / texture.width, 0.005),
+    );
+    expect(camera.focused.single.y, closeTo(0.5, 0.01));
+    await tester.pump(const Duration(seconds: 2));
+  });
+
+  testWidgets('code modes show as coming soon and cannot be picked', (
+    tester,
+  ) async {
+    await pumpCapture(tester);
+    expect(find.text('SOON'), findsNWidgets(2));
+    final qr = find.bySemanticsLabel('QR code mode, coming soon');
+    await tester.ensureVisible(qr);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(qr);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.bySemanticsLabel('Take photo'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(scan.calls.single.mode, ScanMode.document);
+  });
+
+  testWidgets('book mode scrolls its pill into view and explains one page', (
+    tester,
+  ) async {
+    await pumpCapture(tester, mode: ScanMode.book);
+    await tester.pump(const Duration(milliseconds: 300));
+    final pill = tester.getRect(find.bySemanticsLabel('Book mode'));
+    final close = tester.getRect(find.bySemanticsLabel('Close'));
+    final auto = tester.getRect(find.bySemanticsLabel('Auto-capture'));
+    expect(pill.left, greaterThanOrEqualTo(close.right));
+    expect(pill.right, lessThanOrEqualTo(auto.left));
+    expect(find.text('Saves the spread as one page for now'), findsOneWidget);
+
+    await tester.tap(find.bySemanticsLabel('Take photo'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(scan.calls.single.mode, ScanMode.book);
+  });
+
+  testWidgets('a pill picked after scrolling glides back into view', (
+    tester,
+  ) async {
+    await pumpCapture(tester);
+    await tester.drag(
+      find.bySemanticsLabel('Document mode'),
+      const Offset(-400, 0),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.bySemanticsLabel('Book mode'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.takeException(), isNull);
+    final pill = tester.getRect(find.bySemanticsLabel('Book mode'));
+    expect(
+      pill.left,
+      greaterThanOrEqualTo(
+        tester.getRect(find.bySemanticsLabel('Close')).right,
+      ),
+    );
+    expect(
+      pill.right,
+      lessThanOrEqualTo(
+        tester.getRect(find.bySemanticsLabel('Auto-capture')).left,
+      ),
+    );
+    expect(find.text('Saves the spread as one page for now'), findsOneWidget);
+  });
+
+  testWidgets('the auto setting ticks, persists and holds on reopen', (
+    tester,
+  ) async {
+    final haptics = <Object?>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'HapticFeedback.vibrate') {
+          haptics.add(call.arguments);
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    final settings = MemorySettingsStore();
+    await pumpCapture(tester, settings: settings);
+    await tester.tap(find.bySemanticsLabel('Auto-capture'));
+    await tester.pump();
+    expect(haptics, ['HapticFeedbackType.selectionClick']);
+    expect(find.text('AUTO: OFF'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('AUTO'), findsOneWidget);
+    expect(await settings.read('autoCapture'), 'off');
+
+    await tester.pumpWidget(const SizedBox());
+    await pumpCapture(tester, settings: settings);
+    expect(
+      tester.getSemantics(find.bySemanticsLabel('Auto-capture')),
+      isSemantics(isToggled: false, hasToggledState: true),
+    );
+    await emit(tester, page, stable: true);
+    expect(camera.captures, 0);
   });
 }

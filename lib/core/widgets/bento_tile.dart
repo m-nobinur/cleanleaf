@@ -48,11 +48,35 @@ class _BentoTileState extends State<BentoTile> {
     final theme = ShadTheme.of(context);
     final colors = theme.colorScheme;
     final text = theme.textTheme;
-    final (background, foreground) = switch (widget.tone) {
-      TileTone.leaf => (colors.tileLeaf, colors.foreground),
-      TileTone.ember => (colors.tileEmber, colors.foreground),
-      TileTone.mist => (colors.tileMist, colors.foreground),
-      TileTone.ink => (colors.tileInk, colors.onTileInk),
+    final (background, foreground, badge, icon, edge) = switch (widget.tone) {
+      TileTone.leaf => (
+        colors.tileLeaf,
+        colors.foreground,
+        colors.tileLeafBadge,
+        colors.tileLeafIcon,
+        colors.tileLeafEdge,
+      ),
+      TileTone.ember => (
+        colors.tileEmber,
+        colors.foreground,
+        colors.tileEmberBadge,
+        colors.tileEmberIcon,
+        colors.tileEmberEdge,
+      ),
+      TileTone.mist => (
+        colors.tileMist,
+        colors.foreground,
+        colors.tileMistBadge,
+        colors.tileMistIcon,
+        colors.hairline,
+      ),
+      TileTone.ink => (
+        colors.tileInk,
+        colors.onTileInk,
+        colors.tileInkBadge,
+        colors.tileInkIcon,
+        const Color(0x00000000),
+      ),
     };
     final enabled = widget.onTap != null;
 
@@ -67,11 +91,8 @@ class _BentoTileState extends State<BentoTile> {
               Container(
                 width: 52,
                 height: 52,
-                decoration: BoxDecoration(
-                  color: colors.badge,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(widget.icon, size: 24, color: colors.foreground),
+                decoration: BoxDecoration(color: badge, shape: BoxShape.circle),
+                child: Icon(widget.icon, size: 24, color: icon),
               ),
               const Spacer(),
               if (widget.badge != null)
@@ -133,9 +154,7 @@ class _BentoTileState extends State<BentoTile> {
               decoration: BoxDecoration(
                 color: background,
                 borderRadius: BorderRadius.circular(Radii.lg),
-                border: widget.tone == TileTone.mist
-                    ? Border.all(color: colors.hairline)
-                    : null,
+                border: edge.a == 0 ? null : Border.all(color: edge),
               ),
               child: content,
             ),

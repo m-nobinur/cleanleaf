@@ -108,6 +108,7 @@ void main() {
     await tapAndSettle(tester, find.bySemanticsLabel('Convert'));
     expect(find.byKey(const ValueKey(ConvertFormat.pdf)), findsOneWidget);
     expect(find.byKey(const ValueKey(ConvertFormat.jpg)), findsOneWidget);
+    expect(find.byKey(const ValueKey(ConvertFormat.png)), findsOneWidget);
     expect(find.textContaining('Text'), findsNothing);
 
     await tapAndSettle(tester, find.byKey(const ValueKey(ConvertFormat.jpg)));
