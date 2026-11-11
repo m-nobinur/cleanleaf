@@ -19,14 +19,11 @@ class MlKitEngine(
 ) : BenchEngine {
     override val name = "mlkit"
 
-    init {
-        MlKit.initialize(context.applicationContext)
-    }
-
     private val recognizer = create(context.applicationContext)
 
     private fun create(context: Context): TextRecognizer =
         try {
+            MlKit.initialize(context)
             TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         } catch (e: Throwable) {
             Log.i("CLBENCH", "mlkit getClient failed, retrying after TransportRuntime.initialize: ${e.stackTraceToString().take(4000)}")
@@ -35,6 +32,7 @@ class MlKitEngine(
                 .forName("com.google.android.datatransport.runtime.TransportRuntime")
                 .getMethod("initialize", Context::class.java)
                 .invoke(null, context)
+            MlKit.initialize(context)
             TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         }
 
