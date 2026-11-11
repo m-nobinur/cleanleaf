@@ -23,6 +23,7 @@ typedef RenderCall = ({PageFilter filter, int rotation, int maxLongSide});
 
 class FakeRenderer implements PageRenderer {
   final calls = <RenderCall>[];
+  final params = <Map<String, double>>[];
   final _png = Uint8List.fromList(
     img.encodePng(img.Image(width: 4, height: 3)),
   );
@@ -38,6 +39,7 @@ class FakeRenderer implements PageRenderer {
     bool png = false,
   }) async {
     calls.add((filter: filter, rotation: rotation, maxLongSide: maxLongSide));
+    this.params.add(params);
     return _png;
   }
 
@@ -78,6 +80,7 @@ class FakePageRepository extends Fake implements PageRepository {
 Future<({FakeRenderer renderer, FakePageRepository repo})> pumpEnhance(
   WidgetTester tester, {
   bool afterEditor = false,
+  Map<String, double> filterParams = const {},
 }) async {
   tester.view.physicalSize = const Size(400, 800);
   tester.view.devicePixelRatio = 1;
@@ -90,6 +93,7 @@ Future<({FakeRenderer renderer, FakePageRepository repo})> pumpEnhance(
       index: 0,
       originalPath: 'docs/d1/p1/original.jpg',
       corners: fullFrame,
+      filterParams: filterParams,
     ),
   );
   final router = GoRouter(
@@ -99,6 +103,13 @@ Future<({FakeRenderer renderer, FakePageRepository repo})> pumpEnhance(
         path: '/enhance/:pageId',
         builder: (_, state) =>
             EnhanceScreen(pageId: state.pathParameters['pageId']!),
+      ),
+      GoRoute(
+        path: '/editor/:pageId',
+        builder: (context, _) => TextButton(
+          onPressed: () => context.go('/enhance/p1'),
+          child: const Text('Editor stub'),
+        ),
       ),
       GoRoute(
         path: '/',
@@ -217,5 +228,113 @@ void main() {
     await tester.tap(find.widgetWithText(ShadButton, 'Save'));
     await tester.pumpAndSettle();
     expect(repo.edited!.rotation, 90);
+  });
+
+  group('Adjust', () {
+    Future<void> openAdjust(WidgetTester tester) async {
+      await tester.tap(find.bySemanticsLabel('Adjust'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> dragSlider(WidgetTester tester, double dx) async {
+      final slider = find.byType(ShadSlider);
+      final gesture = await tester.startGesture(tester.getCenter(slider));
+      for (var i = 0; i < 4; i++) {
+        await gesture.moveBy(Offset(dx / 4, 0));
+        await tester.pump(const Duration(milliseconds: 60));
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('dragging previews small, releasing renders full', (
+      tester,
+    ) async {
+      final (:renderer, repo: _) = await pumpEnhance(tester);
+      await openAdjust(tester);
+      final before = renderer.calls.length;
+
+      await dragSlider(tester, 60);
+
+      final calls = renderer.calls.sublist(before);
+      final params = renderer.params.sublist(before);
+      expect(calls.first.maxLongSide, 800);
+      expect(params.first['brightness'], greaterThan(0));
+      expect(calls.last.maxLongSide, 1600);
+      final brightness = params.last['brightness']!;
+      expect(brightness, greaterThan(0));
+      expect(find.text('+${(brightness * 100).round()}'), findsOneWidget);
+    });
+
+    testWidgets('reset clears one slider, Reset clears all', (tester) async {
+      final (:renderer, repo: _) = await pumpEnhance(tester);
+      await openAdjust(tester);
+      await dragSlider(tester, 60);
+      await tester.tap(find.bySemanticsLabel('Contrast'));
+      await tester.pumpAndSettle();
+      await dragSlider(tester, -60);
+      expect(
+        renderer.params.last.keys,
+        containsAll(['brightness', 'contrast']),
+      );
+
+      await tester.tap(find.byIcon(LucideIcons.rotateCcw));
+      await tester.pumpAndSettle();
+      expect(renderer.params.last.keys, ['brightness']);
+
+      await tester.tap(find.text('Reset'));
+      await tester.pumpAndSettle();
+      expect(renderer.params.last, isEmpty);
+      expect(find.text('Reset'), findsNothing);
+    });
+
+    testWidgets('Save stores the adjustments beside the aspect ratio', (
+      tester,
+    ) async {
+      final (:renderer, :repo) = await pumpEnhance(
+        tester,
+        filterParams: {aspectRatioParam: 1.5},
+      );
+      await openAdjust(tester);
+      await tester.tap(find.bySemanticsLabel('Straighten'));
+      await tester.pumpAndSettle();
+      await dragSlider(tester, 40);
+      await tester.tap(find.widgetWithText(ShadButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      final saved = repo.edited!.filterParams;
+      expect(saved[aspectRatioParam], 1.5);
+      expect(saved['straighten'], greaterThan(0));
+      expect(saved.keys, unorderedEquals([aspectRatioParam, 'straighten']));
+      expect(renderer.params.last, saved);
+      expect(renderer.calls.last.maxLongSide, 0);
+    });
+
+    testWidgets('Perspective opens the editor and keeps unsaved edits', (
+      tester,
+    ) async {
+      await pumpEnhance(tester);
+      await tester.tap(find.text('B&W'));
+      await openAdjust(tester);
+      await tester.tap(find.bySemanticsLabel('Straighten'));
+      await tester.pumpAndSettle();
+      await dragSlider(tester, 40);
+      final readout = find.textContaining('°');
+      final shown = tester.widget<Text>(readout).data;
+
+      await tester.tap(find.bySemanticsLabel(RegExp('^Perspective')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Editor stub'));
+      await tester.pumpAndSettle();
+      await openAdjust(tester);
+      await tester.tap(find.bySemanticsLabel(RegExp('^Straighten')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(shown!), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel(RegExp('^Brightness')));
+      await tester.pumpAndSettle();
+      // B&W survived the trip too: tone has no effect on it.
+      expect(find.text('No effect on B&W'), findsOneWidget);
+    });
   });
 }
