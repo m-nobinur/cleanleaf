@@ -359,7 +359,7 @@ val CameraProbeApiPigeonMethodCodec = StandardMethodCodec(CameraProbeApiPigeonCo
 
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface CameraProbeHostApi {
-  suspend fun open(analysisWidth: Long, analysisHeight: Long): CameraInfoMsg
+  suspend fun open(analysisWidth: Long, analysisHeight: Long, fps: Long): CameraInfoMsg
   fun startStream()
   fun stopStream()
   suspend fun takePicture(): String
@@ -386,9 +386,10 @@ interface CameraProbeHostApi {
             val args = message as List<Any?>
             val analysisWidthArg = args[0] as Long
             val analysisHeightArg = args[1] as Long
+            val fpsArg = args[2] as Long
             CoroutineScope(Dispatchers.Main).launch {
               val wrapped: List<Any?> = try {
-                listOf(api.open(analysisWidthArg, analysisHeightArg))
+                listOf(api.open(analysisWidthArg, analysisHeightArg, fpsArg))
               } catch (exception: Throwable) {
                 CameraProbeApiPigeonUtils.wrapError(exception)
               }

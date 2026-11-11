@@ -52,7 +52,7 @@ class FrameMsg {
 @HostApi()
 abstract class CameraProbeHostApi {
   @async
-  CameraInfoMsg open(int analysisWidth, int analysisHeight);
+  CameraInfoMsg open(int analysisWidth, int analysisHeight, int fps);
   void startStream();
   void stopStream();
   @async

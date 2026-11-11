@@ -4,9 +4,10 @@ import 'package:flutter/widgets.dart';
 import 'probe_camera.dart';
 
 class PluginProbeCamera implements ProbeCamera {
-  PluginProbeCamera(this.preset);
+  PluginProbeCamera(this.preset, this.fps);
 
   final ResolutionPreset preset;
+  final int fps;
   late final CameraController _controller;
 
   @override
@@ -19,6 +20,7 @@ class PluginProbeCamera implements ProbeCamera {
       back,
       preset,
       enableAudio: false,
+      fps: fps > 0 ? fps : null,
       imageFormatGroup: ImageFormatGroup.yuv420,
     );
     await _controller.initialize();

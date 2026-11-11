@@ -7,17 +7,18 @@ import 'camera_probe_api.g.dart';
 import 'probe_camera.dart';
 
 class NativeProbeCamera implements ProbeCamera {
-  NativeProbeCamera(this.analysisWidth, this.analysisHeight);
+  NativeProbeCamera(this.analysisWidth, this.analysisHeight, this.fps);
 
   final int analysisWidth;
   final int analysisHeight;
+  final int fps;
   final _api = CameraProbeHostApi();
   late CameraInfoMsg _info;
   StreamSubscription<FrameMsg>? _sub;
 
   @override
   Future<Map<String, Object?>> open() async {
-    _info = await _api.open(analysisWidth, analysisHeight);
+    _info = await _api.open(analysisWidth, analysisHeight, fps);
     final before = Timeline.now;
     final native = await _api.monotonicNowUs();
     final after = Timeline.now;

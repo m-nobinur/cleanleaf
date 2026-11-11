@@ -17,14 +17,16 @@ import 'stats.dart';
 
 const candidate = String.fromEnvironment('CANDIDATE', defaultValue: 'A');
 const preset = String.fromEnvironment('PRESET', defaultValue: 'medium');
+const fps = int.fromEnvironment('FPS');
 
-void log(String msg) => print('CLBENCH $candidate/$preset $msg');
+void log(String msg) => print('CLBENCH $candidate/$preset/fps$fps $msg');
 
 ProbeCamera makeCamera() => switch (candidate) {
-  'A' => PluginProbeCamera(ResolutionPreset.values.byName(preset)),
+  'A' => PluginProbeCamera(ResolutionPreset.values.byName(preset), fps),
   'B' => NativeProbeCamera(
     int.parse(preset.split('x').first),
     int.parse(preset.split('x').last),
+    fps,
   ),
   _ => throw UnsupportedError('CANDIDATE=$candidate'),
 };

@@ -313,7 +313,11 @@ class CameraProbeHostApi {
 
   final String pigeonVar_messageChannelSuffix;
 
-  Future<CameraInfoMsg> open(int analysisWidth, int analysisHeight) async {
+  Future<CameraInfoMsg> open(
+    int analysisWidth,
+    int analysisHeight,
+    int fps,
+  ) async {
     final pigeonVar_channelName =
         'dev.flutter.pigeon.cleanleaf.CameraProbeHostApi.open$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
@@ -322,7 +326,7 @@ class CameraProbeHostApi {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[analysisWidth, analysisHeight],
+      <Object?>[analysisWidth, analysisHeight, fps],
     );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(

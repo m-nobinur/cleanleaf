@@ -5,6 +5,7 @@ import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CaptureRequest
 import android.os.Handler
 import android.os.Looper
+import android.util.Range
 import android.util.Size
 import androidx.camera.camera2.interop.Camera2CameraControl
 import androidx.camera.camera2.interop.Camera2CameraInfo
@@ -64,17 +65,23 @@ class CameraProbe(
             }
         }
 
-    override suspend fun open(analysisWidth: Long, analysisHeight: Long): CameraInfoMsg {
+    override suspend fun open(
+        analysisWidth: Long,
+        analysisHeight: Long,
+        fps: Long,
+    ): CameraInfoMsg {
         val provider = ProcessCameraProvider.getInstance(activity).await()
         this.provider = provider
         val producer = textures.createSurfaceProducer()
         this.producer = producer
 
         val ratio43 = AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY
-        val preview =
+        val previewBuilder =
             Preview.Builder()
                 .setResolutionSelector(ResolutionSelector.Builder().setAspectRatioStrategy(ratio43).build())
-                .build()
+        // The frame rate range is session-wide, so setting it on Preview also paces ImageAnalysis.
+        if (fps > 0) previewBuilder.setTargetFrameRate(Range(fps.toInt(), fps.toInt()))
+        val preview = previewBuilder.build()
         analysis =
             ImageAnalysis.Builder()
                 .setResolutionSelector(
