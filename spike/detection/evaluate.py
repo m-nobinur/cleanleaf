@@ -63,6 +63,8 @@ def main() -> None:
             t0 = time.perf_counter()
             pred, _ = fn(bgr)
             ms = (time.perf_counter() - t0) * 1000
+            if pred is not None:  # T-007 label order: clockwise, starting at min x+y in normalized coords
+                pred = det.canonical(pred / [w, h]) * [w, h]
             if gt is None:
                 hit = hit_strict = pred is None
                 err = None
