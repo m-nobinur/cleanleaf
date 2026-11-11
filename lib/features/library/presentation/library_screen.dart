@@ -2,12 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
-import '../../../core/router/app_routes.dart';
 import '../../../core/theme/spacing.dart';
 import '../../export/data/export_providers.dart';
+import '../../scan_engine/presentation/start_scan.dart';
 import '../data/library_providers.dart';
 import '../domain/document.dart';
 import '../domain/document_repository.dart';
@@ -144,7 +143,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               child: ShadButton(
                 height: 52,
                 leading: const Icon(LucideIcons.scanLine),
-                onPressed: () => context.push(AppRoutes.capture),
+                onPressed: () => startScan(context, ref),
                 child: const Text('Scan'),
               ),
             ),

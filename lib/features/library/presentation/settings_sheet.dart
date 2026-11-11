@@ -3,6 +3,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/licenses/about_sheet.dart';
 import '../../../core/theme/spacing.dart';
+import '../../scan_engine/presentation/scan_engine_dialog.dart';
 
 class SettingsRow {
   const SettingsRow({
@@ -24,6 +25,12 @@ const settingsRows = <SettingsRow>[
     icon: LucideIcons.lock,
     title: 'Private by design',
     subtitle: 'Your scans stay on this device.',
+  ),
+  SettingsRow(
+    icon: LucideIcons.scanLine,
+    title: 'Scanner engine',
+    subtitle: 'Cleanleaf or Google ML Kit',
+    onTap: showScanEngineDialog,
   ),
   SettingsRow(
     icon: LucideIcons.info,
@@ -75,12 +82,11 @@ class _SettingsTile extends StatelessWidget {
           Text(row.subtitle!, style: theme.textTheme.muted),
       ],
     );
-    // A button gives its child unbounded width, so Expanded only applies to plain rows.
     final content = Row(
       children: [
         Icon(row.icon, size: 20),
         const SizedBox(width: Spacing.md),
-        onTap == null ? Expanded(child: text) : text,
+        Expanded(child: text),
       ],
     );
     if (onTap == null) {
@@ -91,8 +97,10 @@ class _SettingsTile extends StatelessWidget {
     }
     return ShadButton.ghost(
       width: double.infinity,
-      height: 56,
-      padding: EdgeInsets.zero,
+      // 0 sizes the button to its two-line content.
+      height: 0,
+      padding: const EdgeInsets.symmetric(vertical: Spacing.md),
+      expands: true,
       mainAxisAlignment: MainAxisAlignment.start,
       onPressed: () => onTap(context),
       child: content,
