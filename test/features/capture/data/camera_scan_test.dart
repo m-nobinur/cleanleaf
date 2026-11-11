@@ -141,7 +141,10 @@ void main() {
 
   test('applies the mode presets', () async {
     final pages = _Pages();
-    final card = await scan(pages)(still.path, mode: ScanMode.idCard);
+    final card = await scan(pages, detected: stillQuad)(
+      still.path,
+      mode: ScanMode.idCard,
+    );
     expect(card.filter, PageFilter.original);
     expect(card.filterParams, {aspectRatioParam: PageAspect.id1.ratio});
     expect(pages.edited, same(card));
@@ -150,6 +153,12 @@ void main() {
     final receipt = await scan(_Pages())(still.path, mode: ScanMode.receipt);
     expect(receipt.filter, PageFilter.grayscale);
     expect(receipt.filterParams, isEmpty);
+  });
+
+  test('an undetected ID card keeps the full frame unsnapped', () async {
+    final card = await scan(_Pages())(still.path, mode: ScanMode.idCard);
+    expect(card.filter, PageFilter.original);
+    expect(card.filterParams, isEmpty);
   });
 
   test(

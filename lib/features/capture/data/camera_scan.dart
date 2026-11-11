@@ -50,7 +50,8 @@ class CameraScan {
         ScanMetrics.saved();
         final preset = page.copyWith(
           filter: mode.defaultFilter,
-          filterParams: mode.pageParams,
+          // Snapping the full frame to a card shape would only stretch it.
+          filterParams: corners == null ? const {} : mode.pageParams,
         );
         await pages.updateEdits(preset);
         debugPrint(

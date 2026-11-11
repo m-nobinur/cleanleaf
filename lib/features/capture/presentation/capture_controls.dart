@@ -107,7 +107,7 @@ class ModeSwitch extends StatelessWidget {
     final theme = ShadTheme.of(context);
     final colors = theme.colorScheme;
     return Container(
-      padding: const EdgeInsets.all(Spacing.xs),
+      padding: const EdgeInsets.symmetric(horizontal: Spacing.xs),
       decoration: BoxDecoration(
         color: colors.nav,
         borderRadius: BorderRadius.circular(Radii.full),
@@ -122,23 +122,27 @@ class ModeSwitch extends StatelessWidget {
               selected: m == mode,
               excludeSemantics: true,
               onTap: () => onChanged(m),
+              // The pill is 40 dp; the padding brings each target to 48 dp.
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => onChanged(m),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOut,
-                  height: 40,
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
-                  decoration: BoxDecoration(
-                    color: m == mode ? colors.navSelected : colors.nav,
-                    borderRadius: BorderRadius.circular(Radii.full),
-                  ),
-                  child: Text(
-                    m.label.toUpperCase(),
-                    style: theme.textTheme.monoLabel.copyWith(
-                      color: m == mode ? colors.onNavSelected : colors.onNav,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    height: 40,
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+                    decoration: BoxDecoration(
+                      color: m == mode ? colors.navSelected : colors.nav,
+                      borderRadius: BorderRadius.circular(Radii.full),
+                    ),
+                    child: Text(
+                      m.label.toUpperCase(),
+                      style: theme.textTheme.monoLabel.copyWith(
+                        color: m == mode ? colors.onNavSelected : colors.onNav,
+                      ),
                     ),
                   ),
                 ),
