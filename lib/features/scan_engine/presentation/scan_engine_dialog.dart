@@ -3,13 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/theme/spacing.dart';
+import '../../../core/widgets/modal_close_button.dart';
 import '../domain/scan_engine.dart';
 import 'scan_engine_providers.dart';
 
 Future<void> showScanEngineDialog(BuildContext context) => showShadDialog<void>(
   context: context,
+  barrierLabel: 'Dismiss',
   builder: (_) => const ShadDialog(
-    title: Text('Scanner engine'),
+    title: ModalTitle('Scanner engine'),
+    closeIcon: ModalCloseButton(),
+    closeIconPosition: modalClosePosition,
     child: Padding(
       padding: EdgeInsets.only(top: Spacing.md),
       child: ScanEnginePicker(),
@@ -32,30 +36,42 @@ class ScanEnginePicker extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ShadRadioGroup<ScanEngine>(
-          initialValue: googleAvailable ? engine : ScanEngine.cleanleaf,
-          onChanged: (value) {
-            if (value != null) {
-              ref.read(scanEngineProvider.notifier).select(value);
-            }
-          },
-          spacing: Spacing.md,
-          items: [
-            const ShadRadio(
-              value: ScanEngine.cleanleaf,
-              label: Text('Cleanleaf'),
-              sublabel: Text('On this device, fully private. Default.'),
-            ),
-            if (googleAvailable)
-              const ShadRadio(
-                value: ScanEngine.googleMlKit,
-                label: Text('Google ML Kit'),
-                sublabel: Text(
-                  'Runs in Google Play services, which downloads it on first '
-                  'use.',
+        // shadcn's vertical Wrap leaves items unbounded in width, so long
+        // sublabels ran off the dialog; bound each item to the dialog width.
+        LayoutBuilder(
+          builder: (context, box) {
+            Widget bounded(Widget radio) =>
+                SizedBox(width: box.maxWidth, child: radio);
+            return ShadRadioGroup<ScanEngine>(
+              initialValue: googleAvailable ? engine : ScanEngine.cleanleaf,
+              onChanged: (value) {
+                if (value != null) {
+                  ref.read(scanEngineProvider.notifier).select(value);
+                }
+              },
+              spacing: Spacing.lg,
+              items: [
+                bounded(
+                  const ShadRadio(
+                    value: ScanEngine.cleanleaf,
+                    label: Text('Cleanleaf'),
+                    sublabel: Text('On this device, fully private. Default.'),
+                  ),
                 ),
-              ),
-          ],
+                if (googleAvailable)
+                  bounded(
+                    const ShadRadio(
+                      value: ScanEngine.googleMlKit,
+                      label: Text('Google ML Kit'),
+                      sublabel: Text(
+                        'Runs in Google Play services, which downloads it on '
+                        'first use.',
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
         if (!googleAvailable) ...[
           const SizedBox(height: Spacing.md),

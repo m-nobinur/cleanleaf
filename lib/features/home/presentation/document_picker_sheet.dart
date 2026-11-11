@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/radii.dart';
 import '../../../core/theme/spacing.dart';
+import '../../../core/widgets/list_group.dart';
+import '../../../core/widgets/modal_close_button.dart';
 import '../../library/domain/document.dart';
+import '../../library/presentation/document_card.dart';
+import '../../library/presentation/library_providers.dart';
 
 Future<Document?> showDocumentPicker(
   BuildContext context,
@@ -13,52 +17,56 @@ Future<Document?> showDocumentPicker(
   required String description,
 }) => showShadSheet<Document>(
   context: context,
+  barrierLabel: 'Dismiss',
   side: ShadSheetSide.bottom,
-  builder: (context) {
-    final theme = ShadTheme.of(context);
-    return ShadSheet(
-      radius: const BorderRadius.vertical(top: Radius.circular(Radii.lg)),
-      removeBorderRadiusWhenTiny: false,
-      title: Text(title),
-      description: Text(description),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.5,
-        ),
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.only(top: Spacing.md),
+  builder: (context) => ShadSheet(
+    title: ModalTitle(title),
+    description: Text(description),
+    child: ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.55,
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(top: Spacing.lg),
+        child: ListGroup(
           children: [
             for (final document in documents)
-              ShadButton.ghost(
-                width: double.infinity,
-                height: 56,
-                mainAxisAlignment: MainAxisAlignment.start,
-                leading: const Icon(LucideIcons.fileText, size: 20),
-                onPressed: () => Navigator.of(context).pop(document),
-                child: Expanded(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          document.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text(
-                        DateFormat('d MMM').format(document.updatedAt),
-                        style: theme.textTheme.monoMeta.copyWith(
-                          color: theme.colorScheme.mutedForeground,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              _DocumentRow(
+                key: ValueKey(document.id),
+                document: document,
+                onTap: () => Navigator.of(context).pop(document),
               ),
           ],
         ),
       ),
-    );
-  },
+    ),
+  ),
 );
+
+class _DocumentRow extends ConsumerWidget {
+  const _DocumentRow({super.key, required this.document, required this.onTap});
+
+  final Document document;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pages = ref.watch(documentPagesProvider(document.id)).value;
+    final count = pages?.length ?? 0;
+    return ListRow(
+      leading: SizedBox.square(
+        dimension: 40,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(Radii.sm),
+          child: PageThumbnail(path: pages?.firstOrNull?.thumbPath),
+        ),
+      ),
+      title: document.title,
+      caption:
+          '$count ${count == 1 ? 'page' : 'pages'} · '
+          '${DateFormat('d MMM yyyy').format(document.updatedAt)}',
+      captionIsMeta: true,
+      onTap: onTap,
+    );
+  }
+}

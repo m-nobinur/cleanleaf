@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cleanleaf/core/licenses/about_sheet.dart';
 import 'package:cleanleaf/core/licenses/third_party_licenses.dart';
+import 'package:cleanleaf/core/theme/app_theme.dart';
 import 'package:cleanleaf/features/library/presentation/settings_sheet.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -43,6 +44,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ShadApp(
+        theme: AppTheme.light,
         home: Builder(
           builder: (context) => Scaffold(
             body: TextButton(
@@ -65,6 +67,7 @@ void main() {
   testWidgets('settings row opens the about sheet', (tester) async {
     await tester.pumpWidget(
       ShadApp(
+        theme: AppTheme.light,
         home: Builder(
           builder: (context) => Scaffold(
             body: TextButton(
