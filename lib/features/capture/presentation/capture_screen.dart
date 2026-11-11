@@ -469,6 +469,8 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
 class _ModeGuide extends StatelessWidget {
   const _ModeGuide({required this.mode, required this.visible});
 
+  static final _guide = AppTheme.dark.colorScheme;
+
   final ScanMode mode;
   final bool visible;
 
@@ -488,10 +490,17 @@ class _ModeGuide extends StatelessWidget {
           widthFactor: widthFactor,
           child: AspectRatio(
             aspectRatio: aspect,
+            // Light strokes on a soft ink halo read on a white receipt and on
+            // a dark desk alike; the guide sits over the preview, not the frame.
             child: CornerBrackets(
-              color: ShadTheme.of(context).colorScheme.foreground,
+              color: _guide.foreground,
               strokeWidth: 3,
               length: 0.22,
+              child: CornerBrackets(
+                color: _guide.background.withValues(alpha: 0.35),
+                strokeWidth: 7,
+                length: 0.22,
+              ),
             ),
           ),
         ),
