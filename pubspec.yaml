@@ -80,6 +80,8 @@ flutter:
   assets:
     - assets/licenses/
     - assets/models/lc100_fp16_padzero.tflite
+    # decisions.md D-13a: tessdata_best ben + tessdata_fast eng, copied once to app storage.
+    - assets/tessdata/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

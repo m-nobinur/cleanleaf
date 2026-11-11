@@ -33,6 +33,11 @@ class Pages extends Table {
   TextColumn get filterParams => text()();
   TextColumn get renderPath => text().nullable()();
   TextColumn get thumbPath => text().nullable()();
+  // Null until the page is queued for OCR (decisions.md D-13a).
+  TextColumn get ocrStatus => text().nullable()();
+  TextColumn get ocrLanguage => text().nullable()();
+  TextColumn get ocrText => text().nullable()();
+  TextColumn get ocrWords => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

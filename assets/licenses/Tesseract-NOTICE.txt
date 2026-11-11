@@ -1,0 +1,18 @@
+Tesseract4Android 4.9.0
+Copyright (C) 2019 Adaptech s.r.o., Robert Pösel
+Copyright (C) 2011 Google Inc.
+Copyright (C) 2011 Robert Theis
+https://github.com/adaptech-cz/Tesseract4Android
+
+Tesseract OCR 5.5.1
+Copyright (C) Hewlett-Packard Company, Google Inc. and the Tesseract OCR contributors
+https://github.com/tesseract-ocr/tesseract
+
+Trained data: tessdata_best ben.traineddata (commit e12c65a9) and tessdata_fast eng.traineddata (commit 87416418)
+Copyright (C) Google Inc. and the Tesseract OCR contributors
+https://github.com/tesseract-ocr/tessdata_best
+https://github.com/tesseract-ocr/tessdata_fast
+
+libpng (bundled by Tesseract4Android) is covered by the libpng notice.
+
+All of the above are licensed under the Apache License, Version 2.0, except libpng.

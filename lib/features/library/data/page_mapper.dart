@@ -52,4 +52,5 @@ DocumentPage pageFromRow(PageRow r) => DocumentPage(
   filterParams: decodeFilterParams(r.filterParams),
   renderPath: r.renderPath,
   thumbPath: r.thumbPath,
+  ocrStatus: r.ocrStatus == null ? null : OcrStatus.values.byName(r.ocrStatus!),
 );

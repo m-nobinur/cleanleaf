@@ -509,6 +509,50 @@ class $PagesTable extends Pages with TableInfo<$PagesTable, PageRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _ocrStatusMeta = const VerificationMeta(
+    'ocrStatus',
+  );
+  @override
+  late final GeneratedColumn<String> ocrStatus = GeneratedColumn<String>(
+    'ocr_status',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ocrLanguageMeta = const VerificationMeta(
+    'ocrLanguage',
+  );
+  @override
+  late final GeneratedColumn<String> ocrLanguage = GeneratedColumn<String>(
+    'ocr_language',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ocrTextMeta = const VerificationMeta(
+    'ocrText',
+  );
+  @override
+  late final GeneratedColumn<String> ocrText = GeneratedColumn<String>(
+    'ocr_text',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ocrWordsMeta = const VerificationMeta(
+    'ocrWords',
+  );
+  @override
+  late final GeneratedColumn<String> ocrWords = GeneratedColumn<String>(
+    'ocr_words',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -524,6 +568,10 @@ class $PagesTable extends Pages with TableInfo<$PagesTable, PageRow> {
     filterParams,
     renderPath,
     thumbPath,
+    ocrStatus,
+    ocrLanguage,
+    ocrText,
+    ocrWords,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -641,6 +689,33 @@ class $PagesTable extends Pages with TableInfo<$PagesTable, PageRow> {
         thumbPath.isAcceptableOrUnknown(data['thumb_path']!, _thumbPathMeta),
       );
     }
+    if (data.containsKey('ocr_status')) {
+      context.handle(
+        _ocrStatusMeta,
+        ocrStatus.isAcceptableOrUnknown(data['ocr_status']!, _ocrStatusMeta),
+      );
+    }
+    if (data.containsKey('ocr_language')) {
+      context.handle(
+        _ocrLanguageMeta,
+        ocrLanguage.isAcceptableOrUnknown(
+          data['ocr_language']!,
+          _ocrLanguageMeta,
+        ),
+      );
+    }
+    if (data.containsKey('ocr_text')) {
+      context.handle(
+        _ocrTextMeta,
+        ocrText.isAcceptableOrUnknown(data['ocr_text']!, _ocrTextMeta),
+      );
+    }
+    if (data.containsKey('ocr_words')) {
+      context.handle(
+        _ocrWordsMeta,
+        ocrWords.isAcceptableOrUnknown(data['ocr_words']!, _ocrWordsMeta),
+      );
+    }
     return context;
   }
 
@@ -702,6 +777,22 @@ class $PagesTable extends Pages with TableInfo<$PagesTable, PageRow> {
         DriftSqlType.string,
         data['${effectivePrefix}thumb_path'],
       ),
+      ocrStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ocr_status'],
+      ),
+      ocrLanguage: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ocr_language'],
+      ),
+      ocrText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ocr_text'],
+      ),
+      ocrWords: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ocr_words'],
+      ),
     );
   }
 
@@ -725,6 +816,10 @@ class PageRow extends DataClass implements Insertable<PageRow> {
   final String filterParams;
   final String? renderPath;
   final String? thumbPath;
+  final String? ocrStatus;
+  final String? ocrLanguage;
+  final String? ocrText;
+  final String? ocrWords;
   const PageRow({
     required this.id,
     required this.documentId,
@@ -739,6 +834,10 @@ class PageRow extends DataClass implements Insertable<PageRow> {
     required this.filterParams,
     this.renderPath,
     this.thumbPath,
+    this.ocrStatus,
+    this.ocrLanguage,
+    this.ocrText,
+    this.ocrWords,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -761,6 +860,18 @@ class PageRow extends DataClass implements Insertable<PageRow> {
     }
     if (!nullToAbsent || thumbPath != null) {
       map['thumb_path'] = Variable<String>(thumbPath);
+    }
+    if (!nullToAbsent || ocrStatus != null) {
+      map['ocr_status'] = Variable<String>(ocrStatus);
+    }
+    if (!nullToAbsent || ocrLanguage != null) {
+      map['ocr_language'] = Variable<String>(ocrLanguage);
+    }
+    if (!nullToAbsent || ocrText != null) {
+      map['ocr_text'] = Variable<String>(ocrText);
+    }
+    if (!nullToAbsent || ocrWords != null) {
+      map['ocr_words'] = Variable<String>(ocrWords);
     }
     return map;
   }
@@ -786,6 +897,18 @@ class PageRow extends DataClass implements Insertable<PageRow> {
       thumbPath: thumbPath == null && nullToAbsent
           ? const Value.absent()
           : Value(thumbPath),
+      ocrStatus: ocrStatus == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ocrStatus),
+      ocrLanguage: ocrLanguage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ocrLanguage),
+      ocrText: ocrText == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ocrText),
+      ocrWords: ocrWords == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ocrWords),
     );
   }
 
@@ -808,6 +931,10 @@ class PageRow extends DataClass implements Insertable<PageRow> {
       filterParams: serializer.fromJson<String>(json['filterParams']),
       renderPath: serializer.fromJson<String?>(json['renderPath']),
       thumbPath: serializer.fromJson<String?>(json['thumbPath']),
+      ocrStatus: serializer.fromJson<String?>(json['ocrStatus']),
+      ocrLanguage: serializer.fromJson<String?>(json['ocrLanguage']),
+      ocrText: serializer.fromJson<String?>(json['ocrText']),
+      ocrWords: serializer.fromJson<String?>(json['ocrWords']),
     );
   }
   @override
@@ -827,6 +954,10 @@ class PageRow extends DataClass implements Insertable<PageRow> {
       'filterParams': serializer.toJson<String>(filterParams),
       'renderPath': serializer.toJson<String?>(renderPath),
       'thumbPath': serializer.toJson<String?>(thumbPath),
+      'ocrStatus': serializer.toJson<String?>(ocrStatus),
+      'ocrLanguage': serializer.toJson<String?>(ocrLanguage),
+      'ocrText': serializer.toJson<String?>(ocrText),
+      'ocrWords': serializer.toJson<String?>(ocrWords),
     };
   }
 
@@ -844,6 +975,10 @@ class PageRow extends DataClass implements Insertable<PageRow> {
     String? filterParams,
     Value<String?> renderPath = const Value.absent(),
     Value<String?> thumbPath = const Value.absent(),
+    Value<String?> ocrStatus = const Value.absent(),
+    Value<String?> ocrLanguage = const Value.absent(),
+    Value<String?> ocrText = const Value.absent(),
+    Value<String?> ocrWords = const Value.absent(),
   }) => PageRow(
     id: id ?? this.id,
     documentId: documentId ?? this.documentId,
@@ -860,6 +995,10 @@ class PageRow extends DataClass implements Insertable<PageRow> {
     filterParams: filterParams ?? this.filterParams,
     renderPath: renderPath.present ? renderPath.value : this.renderPath,
     thumbPath: thumbPath.present ? thumbPath.value : this.thumbPath,
+    ocrStatus: ocrStatus.present ? ocrStatus.value : this.ocrStatus,
+    ocrLanguage: ocrLanguage.present ? ocrLanguage.value : this.ocrLanguage,
+    ocrText: ocrText.present ? ocrText.value : this.ocrText,
+    ocrWords: ocrWords.present ? ocrWords.value : this.ocrWords,
   );
   PageRow copyWithCompanion(PagesCompanion data) {
     return PageRow(
@@ -886,6 +1025,12 @@ class PageRow extends DataClass implements Insertable<PageRow> {
           ? data.renderPath.value
           : this.renderPath,
       thumbPath: data.thumbPath.present ? data.thumbPath.value : this.thumbPath,
+      ocrStatus: data.ocrStatus.present ? data.ocrStatus.value : this.ocrStatus,
+      ocrLanguage: data.ocrLanguage.present
+          ? data.ocrLanguage.value
+          : this.ocrLanguage,
+      ocrText: data.ocrText.present ? data.ocrText.value : this.ocrText,
+      ocrWords: data.ocrWords.present ? data.ocrWords.value : this.ocrWords,
     );
   }
 
@@ -904,7 +1049,11 @@ class PageRow extends DataClass implements Insertable<PageRow> {
           ..write('filter: $filter, ')
           ..write('filterParams: $filterParams, ')
           ..write('renderPath: $renderPath, ')
-          ..write('thumbPath: $thumbPath')
+          ..write('thumbPath: $thumbPath, ')
+          ..write('ocrStatus: $ocrStatus, ')
+          ..write('ocrLanguage: $ocrLanguage, ')
+          ..write('ocrText: $ocrText, ')
+          ..write('ocrWords: $ocrWords')
           ..write(')'))
         .toString();
   }
@@ -924,6 +1073,10 @@ class PageRow extends DataClass implements Insertable<PageRow> {
     filterParams,
     renderPath,
     thumbPath,
+    ocrStatus,
+    ocrLanguage,
+    ocrText,
+    ocrWords,
   );
   @override
   bool operator ==(Object other) =>
@@ -941,7 +1094,11 @@ class PageRow extends DataClass implements Insertable<PageRow> {
           other.filter == this.filter &&
           other.filterParams == this.filterParams &&
           other.renderPath == this.renderPath &&
-          other.thumbPath == this.thumbPath);
+          other.thumbPath == this.thumbPath &&
+          other.ocrStatus == this.ocrStatus &&
+          other.ocrLanguage == this.ocrLanguage &&
+          other.ocrText == this.ocrText &&
+          other.ocrWords == this.ocrWords);
 }
 
 class PagesCompanion extends UpdateCompanion<PageRow> {
@@ -958,6 +1115,10 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
   final Value<String> filterParams;
   final Value<String?> renderPath;
   final Value<String?> thumbPath;
+  final Value<String?> ocrStatus;
+  final Value<String?> ocrLanguage;
+  final Value<String?> ocrText;
+  final Value<String?> ocrWords;
   final Value<int> rowid;
   const PagesCompanion({
     this.id = const Value.absent(),
@@ -973,6 +1134,10 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
     this.filterParams = const Value.absent(),
     this.renderPath = const Value.absent(),
     this.thumbPath = const Value.absent(),
+    this.ocrStatus = const Value.absent(),
+    this.ocrLanguage = const Value.absent(),
+    this.ocrText = const Value.absent(),
+    this.ocrWords = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PagesCompanion.insert({
@@ -989,6 +1154,10 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
     required String filterParams,
     this.renderPath = const Value.absent(),
     this.thumbPath = const Value.absent(),
+    this.ocrStatus = const Value.absent(),
+    this.ocrLanguage = const Value.absent(),
+    this.ocrText = const Value.absent(),
+    this.ocrWords = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        documentId = Value(documentId),
@@ -1014,6 +1183,10 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
     Expression<String>? filterParams,
     Expression<String>? renderPath,
     Expression<String>? thumbPath,
+    Expression<String>? ocrStatus,
+    Expression<String>? ocrLanguage,
+    Expression<String>? ocrText,
+    Expression<String>? ocrWords,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1030,6 +1203,10 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
       if (filterParams != null) 'filter_params': filterParams,
       if (renderPath != null) 'render_path': renderPath,
       if (thumbPath != null) 'thumb_path': thumbPath,
+      if (ocrStatus != null) 'ocr_status': ocrStatus,
+      if (ocrLanguage != null) 'ocr_language': ocrLanguage,
+      if (ocrText != null) 'ocr_text': ocrText,
+      if (ocrWords != null) 'ocr_words': ocrWords,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1048,6 +1225,10 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
     Value<String>? filterParams,
     Value<String?>? renderPath,
     Value<String?>? thumbPath,
+    Value<String?>? ocrStatus,
+    Value<String?>? ocrLanguage,
+    Value<String?>? ocrText,
+    Value<String?>? ocrWords,
     Value<int>? rowid,
   }) {
     return PagesCompanion(
@@ -1064,6 +1245,10 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
       filterParams: filterParams ?? this.filterParams,
       renderPath: renderPath ?? this.renderPath,
       thumbPath: thumbPath ?? this.thumbPath,
+      ocrStatus: ocrStatus ?? this.ocrStatus,
+      ocrLanguage: ocrLanguage ?? this.ocrLanguage,
+      ocrText: ocrText ?? this.ocrText,
+      ocrWords: ocrWords ?? this.ocrWords,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1110,6 +1295,18 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
     if (thumbPath.present) {
       map['thumb_path'] = Variable<String>(thumbPath.value);
     }
+    if (ocrStatus.present) {
+      map['ocr_status'] = Variable<String>(ocrStatus.value);
+    }
+    if (ocrLanguage.present) {
+      map['ocr_language'] = Variable<String>(ocrLanguage.value);
+    }
+    if (ocrText.present) {
+      map['ocr_text'] = Variable<String>(ocrText.value);
+    }
+    if (ocrWords.present) {
+      map['ocr_words'] = Variable<String>(ocrWords.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1132,6 +1329,10 @@ class PagesCompanion extends UpdateCompanion<PageRow> {
           ..write('filterParams: $filterParams, ')
           ..write('renderPath: $renderPath, ')
           ..write('thumbPath: $thumbPath, ')
+          ..write('ocrStatus: $ocrStatus, ')
+          ..write('ocrLanguage: $ocrLanguage, ')
+          ..write('ocrText: $ocrText, ')
+          ..write('ocrWords: $ocrWords, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1479,6 +1680,10 @@ typedef $$PagesTableCreateCompanionBuilder = PagesCompanion Function({
   required String filterParams,
   Value<String?> renderPath,
   Value<String?> thumbPath,
+  Value<String?> ocrStatus,
+  Value<String?> ocrLanguage,
+  Value<String?> ocrText,
+  Value<String?> ocrWords,
   Value<int> rowid,
 });
 typedef $$PagesTableUpdateCompanionBuilder = PagesCompanion Function({
@@ -1495,6 +1700,10 @@ typedef $$PagesTableUpdateCompanionBuilder = PagesCompanion Function({
   Value<String> filterParams,
   Value<String?> renderPath,
   Value<String?> thumbPath,
+  Value<String?> ocrStatus,
+  Value<String?> ocrLanguage,
+  Value<String?> ocrText,
+  Value<String?> ocrWords,
   Value<int> rowid,
 });
 
@@ -1585,6 +1794,26 @@ class $$PagesTableFilterComposer extends Composer<_$AppDatabase, $PagesTable> {
 
   ColumnFilters<String> get thumbPath => $composableBuilder(
     column: $table.thumbPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ocrStatus => $composableBuilder(
+    column: $table.ocrStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ocrLanguage => $composableBuilder(
+    column: $table.ocrLanguage,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ocrText => $composableBuilder(
+    column: $table.ocrText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ocrWords => $composableBuilder(
+    column: $table.ocrWords,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1681,6 +1910,26 @@ class $$PagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get ocrStatus => $composableBuilder(
+    column: $table.ocrStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ocrLanguage => $composableBuilder(
+    column: $table.ocrLanguage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ocrText => $composableBuilder(
+    column: $table.ocrText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ocrWords => $composableBuilder(
+    column: $table.ocrWords,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$DocumentsTableOrderingComposer get documentId {
     final $$DocumentsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -1758,6 +2007,20 @@ class $$PagesTableAnnotationComposer
   GeneratedColumn<String> get thumbPath =>
       $composableBuilder(column: $table.thumbPath, builder: (column) => column);
 
+  GeneratedColumn<String> get ocrStatus =>
+      $composableBuilder(column: $table.ocrStatus, builder: (column) => column);
+
+  GeneratedColumn<String> get ocrLanguage => $composableBuilder(
+    column: $table.ocrLanguage,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get ocrText =>
+      $composableBuilder(column: $table.ocrText, builder: (column) => column);
+
+  GeneratedColumn<String> get ocrWords =>
+      $composableBuilder(column: $table.ocrWords, builder: (column) => column);
+
   $$DocumentsTableAnnotationComposer get documentId {
     final $$DocumentsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -1823,6 +2086,10 @@ class $$PagesTableTableManager
                 Value<String> filterParams = const Value.absent(),
                 Value<String?> renderPath = const Value.absent(),
                 Value<String?> thumbPath = const Value.absent(),
+                Value<String?> ocrStatus = const Value.absent(),
+                Value<String?> ocrLanguage = const Value.absent(),
+                Value<String?> ocrText = const Value.absent(),
+                Value<String?> ocrWords = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PagesCompanion(
                 id: id,
@@ -1838,6 +2105,10 @@ class $$PagesTableTableManager
                 filterParams: filterParams,
                 renderPath: renderPath,
                 thumbPath: thumbPath,
+                ocrStatus: ocrStatus,
+                ocrLanguage: ocrLanguage,
+                ocrText: ocrText,
+                ocrWords: ocrWords,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -1855,6 +2126,10 @@ class $$PagesTableTableManager
                 required String filterParams,
                 Value<String?> renderPath = const Value.absent(),
                 Value<String?> thumbPath = const Value.absent(),
+                Value<String?> ocrStatus = const Value.absent(),
+                Value<String?> ocrLanguage = const Value.absent(),
+                Value<String?> ocrText = const Value.absent(),
+                Value<String?> ocrWords = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PagesCompanion.insert(
                 id: id,
@@ -1870,6 +2145,10 @@ class $$PagesTableTableManager
                 filterParams: filterParams,
                 renderPath: renderPath,
                 thumbPath: thumbPath,
+                ocrStatus: ocrStatus,
+                ocrLanguage: ocrLanguage,
+                ocrText: ocrText,
+                ocrWords: ocrWords,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

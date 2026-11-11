@@ -4,6 +4,8 @@ enum PageFilter { original, enhancedColor, grayscale, blackWhite }
 
 enum PageSource { camera, gallery, googleScanner }
 
+enum OcrStatus { pending, running, done, failed }
+
 // Edge order: top, right, bottom, left.
 typedef EdgeAnchors = List<List<Point>>;
 
@@ -31,6 +33,7 @@ class DocumentPage(
   final Map<String, double> filterParams = const {},
   final String? renderPath,
   final String? thumbPath,
+  final OcrStatus? ocrStatus,
 }) {
   DocumentPage copyWith({
     Quad? corners,
@@ -52,5 +55,6 @@ class DocumentPage(
     filterParams: filterParams ?? this.filterParams,
     renderPath: renderPath,
     thumbPath: thumbPath,
+    ocrStatus: ocrStatus,
   );
 }

@@ -10,6 +10,7 @@ import 'app.dart';
 import 'core/licenses/third_party_licenses.dart';
 import 'core/metrics/ab_session.dart';
 import 'core/platform/clvision.dart';
+import 'features/ocr/data/ocr_providers.dart';
 
 void main() {
   registerThirdPartyLicenses();
@@ -24,7 +25,14 @@ void main() {
     debugPrint('CLMETRIC ab_session $name');
     AbSession.current!.event('app_start', {});
   }
-  runApp(const ProviderScope(child: CleanleafApp()));
+  final container = ProviderContainer();
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: const CleanleafApp(),
+    ),
+  );
+  unawaited(container.read(ocrQueueProvider).start());
   // Live and still detection return no page until the model is in.
   unawaited(loadDocAligner());
 }
