@@ -131,10 +131,16 @@ const modelHeatmapSize = 128;
 
 /// Loads DocAligner into clvision, off the UI thread. Kotlin's live detection
 /// shares the same library instance (D-39), so this enables it too.
-Future<void> loadDocAligner() async {
+/// fp16 is the shipped default (decisions.md D-43); it falls back to fp32 on
+/// CPUs without fp16 arithmetic.
+Future<void> loadDocAligner({bool fp16 = true}) async {
   final data = await rootBundle.load(docAlignerAsset);
   final model = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-  final status = await Isolate.run(() => _loadModel(model));
+  final status = await Isolate.run(() {
+    final loaded = _loadModel(model);
+    if (loaded == ClvStatus.ok && fp16) clvModelSetFp16(1);
+    return loaded;
+  });
   if (status != ClvStatus.ok) {
     throw StateError('clv_model_load failed with status $status');
   }
