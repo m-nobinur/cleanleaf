@@ -36,11 +36,20 @@ class GoogleScan {
       );
       final edited = page.copyWith(filter: PageFilter.original);
       await pages.updateEdits(edited);
-      await jpeg.delete();
+      await _deleteQuietly(jpeg);
       return edited;
     } catch (_) {
       await documents.delete(document.id);
       rethrow;
+    }
+  }
+
+  // Best effort: a leftover cache file must never undo a saved scan.
+  Future<void> _deleteQuietly(File file) async {
+    try {
+      await file.delete();
+    } on FileSystemException {
+      // Ignored; it is in the cache dir, which Android clears.
     }
   }
 }

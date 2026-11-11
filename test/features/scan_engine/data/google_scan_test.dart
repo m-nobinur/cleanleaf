@@ -30,9 +30,10 @@ class _Documents implements DocumentRepository {
 }
 
 class _Pages implements PageRepository {
-  _Pages({this.fail = false});
+  _Pages({this.fail = false, this.onStored});
 
   final bool fail;
+  final void Function()? onStored;
   List<int>? stored;
   PageSource? source;
   DocumentPage? edited;
@@ -46,6 +47,7 @@ class _Pages implements PageRepository {
   }) async {
     if (fail) throw StateError('disk full');
     stored = [await for (final chunk in original) ...chunk];
+    onStored?.call();
     this.source = source;
     return DocumentPage(
       'p1',
@@ -112,5 +114,13 @@ void main() {
       throwsStateError,
     );
     expect(docs.deleted, ['d1']);
+  });
+
+  test('a failed temp cleanup keeps the saved scan', () async {
+    final docs = _Documents();
+    final pages = _Pages(onStored: jpeg.deleteSync);
+    final page = await scanWith(jpeg.path, docs, pages)();
+    expect(page?.filter, PageFilter.original);
+    expect(docs.deleted, isEmpty);
   });
 }
