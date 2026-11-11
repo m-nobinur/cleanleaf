@@ -15,6 +15,16 @@ if(NOT ANDROID)
 endif()
 
 add_library(clvision SHARED ${sources})
+
+# LiteRT C API (decisions.md D-11): headers from the LiteRT AAR plus the vendored
+# XNNPACK delegate header; the hook supplies the per-platform library.
+set(LITERT_INCLUDE_DIR "" CACHE PATH "LiteRT AAR headers directory")
+set(LITERT_LIBRARY "" CACHE FILEPATH "LiteRT C API shared library")
+add_library(litert SHARED IMPORTED)
+set_target_properties(litert PROPERTIES
+  IMPORTED_LOCATION "${LITERT_LIBRARY}"
+  INTERFACE_INCLUDE_DIRECTORIES "${LITERT_INCLUDE_DIR};${CMAKE_CURRENT_SOURCE_DIR}/third_party/litert")
+target_link_libraries(clvision PRIVATE litert)
 target_include_directories(clvision PRIVATE include ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(clvision PRIVATE opencv_core opencv_imgproc opencv_imgcodecs)
 set_target_properties(clvision PROPERTIES
@@ -31,6 +41,9 @@ if(ANDROID)
   target_link_libraries(clvision PRIVATE log)
 elseif(APPLE)
   target_link_options(clvision PRIVATE -Wl,-dead_strip)
+  # Host tests load LiteRT from the shared cache instead of bundling it.
+  get_filename_component(litert_dir "${LITERT_LIBRARY}" DIRECTORY)
+  set_target_properties(clvision PROPERTIES BUILD_RPATH "${litert_dir}" INSTALL_RPATH "${litert_dir}")
 endif()
 
 install(TARGETS clvision LIBRARY DESTINATION lib)
