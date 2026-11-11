@@ -72,11 +72,6 @@ void main() {
           ),
         ),
         GoRoute(
-          path: '/confirm/:pageId',
-          builder: (_, state) =>
-              Text('confirm:${state.pathParameters['pageId']}'),
-        ),
-        GoRoute(
           path: '/editor/:pageId',
           builder: (_, state) =>
               Text('editor:${state.pathParameters['pageId']}'),
@@ -178,8 +173,8 @@ void main() {
     expect(camera.captures, 1);
     expect(scan.calls.single.liveQuad, page);
     expect(scan.calls.single.mode, ScanMode.document);
-    expect(find.text('confirm:p1'), findsOneWidget);
-    expect(camera.stops, 1, reason: 'camera is off under the confirm screen');
+    expect(find.text('editor:p1'), findsOneWidget);
+    expect(camera.stops, 1, reason: 'camera is off under the crop review');
 
     await pop(tester);
     expect(camera.starts, 2);
@@ -201,7 +196,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(camera.captures, 1);
-    expect(find.text('confirm:p1'), findsOneWidget);
+    expect(find.text('editor:p1'), findsOneWidget);
   });
 
   testWidgets('restarts the camera when the app comes back', (tester) async {

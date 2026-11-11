@@ -49,12 +49,16 @@ class CropCanvas extends StatefulWidget {
     required this.imageSize,
     required this.quarterTurns,
     required this.quad,
+    this.onDragStart,
   });
 
   final ImageProvider image;
   final Size imageSize;
   final int quarterTurns;
   final ValueNotifier<Quad> quad;
+
+  /// Once per handle gesture, before the quad changes.
+  final VoidCallback? onDragStart;
 
   @override
   State<CropCanvas> createState() => _CropCanvasState();
@@ -96,6 +100,7 @@ class _CropCanvasState extends State<CropCanvas> {
   }
 
   void _onDragStart(_HandleSpec h, DragStartDetails d) {
+    widget.onDragStart?.call();
     _startQuad = widget.quad.value;
     _startPointer = _toImage(d.globalPosition);
     _showLoupe(h.at(_startQuad!));

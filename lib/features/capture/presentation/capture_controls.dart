@@ -365,7 +365,8 @@ class _AutoCaptureToggleState extends State<AutoCaptureToggle> {
   }
 }
 
-/// Icon over a text label, for the import shortcut beside the shutter.
+/// Icon over a text label, for the import shortcut beside the shutter and
+/// the review tools; muted and inert when [onPressed] is null.
 class LabeledIconButton extends StatelessWidget {
   const LabeledIconButton({
     super.key,
@@ -376,15 +377,18 @@ class LabeledIconButton extends StatelessWidget {
 
   final IconData icon;
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
-    final color = theme.colorScheme.foreground;
+    final color = onPressed == null
+        ? theme.colorScheme.mutedForeground
+        : theme.colorScheme.foreground;
     return Semantics(
       label: label,
       button: true,
+      enabled: onPressed != null,
       excludeSemantics: true,
       onTap: onPressed,
       child: GestureDetector(
@@ -398,7 +402,12 @@ class LabeledIconButton extends StatelessWidget {
             children: [
               Icon(icon, size: 24, color: color),
               const SizedBox(height: Spacing.xs),
-              Text(label, style: theme.textTheme.small.copyWith(color: color)),
+              Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                style: theme.textTheme.small.copyWith(color: color),
+              ),
             ],
           ),
         ),

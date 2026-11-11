@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:typed_data';
+import 'dart:ui' show Tristate;
 
 import 'package:cleanleaf/core/geometry/quad.dart';
 import 'package:cleanleaf/core/theme/app_theme.dart';
@@ -13,6 +15,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
 import 'package:shadcn_ui/shadcn_ui.dart';
+
+import '../../library/presentation/fakes.dart' show FakeDocumentRepository;
 
 const Quad inset = (
   topLeft: (x: 0.2, y: 0.2),
@@ -44,13 +48,18 @@ class FakePageRepository extends Fake implements PageRepository {
 
 final _png = Uint8List.fromList(img.encodePng(img.Image(width: 4, height: 3)));
 
+late FakeDocumentRepository documents;
+
 Future<FakePageRepository> pumpEditor(
   WidgetTester tester, {
+  Quad corners = inset,
   Quad? detectedCorners = detected,
   Size pageSize = const Size(400, 300),
+  bool fresh = false,
+  PageSource source = PageSource.camera,
 }) async {
   tester.view
-    ..physicalSize = const Size(1080, 2340)
+    ..physicalSize = const Size(1236, 2745)
     ..devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   final repo = FakePageRepository(
@@ -59,17 +68,21 @@ Future<FakePageRepository> pumpEditor(
       documentId: 'd1',
       index: 0,
       originalPath: 'docs/d1/p1/original.jpg',
-      corners: inset,
+      corners: corners,
       detectedCorners: detectedCorners,
+      source: source,
     ),
   );
+  documents = FakeDocumentRepository();
   final router = GoRouter(
-    initialLocation: '/editor/p1',
     routes: [
+      GoRoute(path: '/', builder: (_, _) => const Text('camera')),
       GoRoute(
         path: '/editor/:pageId',
-        builder: (_, state) =>
-            EditorScreen(pageId: state.pathParameters['pageId']!),
+        builder: (_, state) => EditorScreen(
+          pageId: state.pathParameters['pageId']!,
+          fresh: state.uri.queryParameters['fresh'] == '1',
+        ),
       ),
       GoRoute(
         path: '/enhance/:pageId',
@@ -82,6 +95,7 @@ Future<FakePageRepository> pumpEditor(
     ProviderScope(
       overrides: [
         pageRepositoryProvider.overrideWithValue(repo),
+        documentRepositoryProvider.overrideWithValue(documents),
         pageImageProvider.overrideWith(
           (ref, path) async => (image: MemoryImage(_png), size: pageSize),
         ),
@@ -93,6 +107,7 @@ Future<FakePageRepository> pumpEditor(
       ),
     ),
   );
+  unawaited(router.push(fresh ? '/editor/p1?fresh=1' : '/editor/p1'));
   await tester.pumpAndSettle();
   return repo;
 }
@@ -113,6 +128,11 @@ Future<void> drag(WidgetTester tester, String handle, Offset by) async {
 Size imageSize(WidgetTester tester) => tester.getSize(find.byType(Image));
 
 Finder get continueButton => find.widgetWithText(ShadButton, 'Continue');
+
+Future<void> tapLabel(WidgetTester tester, String label) async {
+  await tester.tap(find.bySemanticsLabel(label));
+  await tester.pumpAndSettle();
+}
 
 Future<void> tapContinue(WidgetTester tester) async {
   await tester.tap(continueButton);
@@ -185,37 +205,100 @@ void main() {
     expect(repo.saved, isNull);
   });
 
-  testWidgets('Reset restores the detected corners', (tester) async {
-    final repo = await pumpEditor(tester);
+  testWidgets('the crop toggle swaps detected corners and the full photo', (
+    tester,
+  ) async {
+    final repo = await pumpEditor(tester, corners: detected);
+    expect(find.bySemanticsLabel('Auto crop'), findsNothing);
+
+    await tapLabel(tester, 'Full photo');
+    expect(find.bySemanticsLabel('Full photo'), findsNothing);
+    await tapLabel(tester, 'Auto crop');
+    await tapLabel(tester, 'Full photo');
+    await tapContinue(tester);
+
+    expect(repo.saved!.corners, fullFrame);
+  });
+
+  testWidgets('after a manual edit the toggle restores auto crop', (
+    tester,
+  ) async {
+    final repo = await pumpEditor(tester, corners: detected);
 
     await drag(tester, 'Top left corner', const Offset(40, 30));
-    await tester.tap(find.byIcon(LucideIcons.scanLine));
-    await tester.pump();
+    await tapLabel(tester, 'Auto crop');
     await tapContinue(tester);
 
     expect(repo.saved!.corners, detected);
   });
 
-  testWidgets('Reset without a detection restores the full frame', (
-    tester,
-  ) async {
+  testWidgets('without a detection only Full photo exists', (tester) async {
     final repo = await pumpEditor(tester, detectedCorners: null);
+    bool enabled() =>
+        tester
+            .getSemantics(find.bySemanticsLabel('Full photo'))
+            .flagsCollection
+            .isEnabled ==
+        Tristate.isTrue;
+    expect(enabled(), isTrue);
 
-    await tester.tap(find.byIcon(LucideIcons.scanLine));
-    await tester.pump();
+    await tapLabel(tester, 'Full photo');
+
+    expect(find.bySemanticsLabel('Auto crop'), findsNothing);
+    expect(enabled(), isFalse);
     await tapContinue(tester);
-
     expect(repo.saved!.corners, fullFrame);
   });
 
-  testWidgets('Full image selects the whole frame', (tester) async {
-    final repo = await pumpEditor(tester);
+  testWidgets('undo appears after an edit and steps back through edits', (
+    tester,
+  ) async {
+    final repo = await pumpEditor(tester, corners: detected);
+    expect(find.bySemanticsLabel('Undo'), findsNothing);
 
-    await tester.tap(find.byIcon(LucideIcons.maximize));
-    await tester.pump();
+    await drag(tester, 'Top left corner', const Offset(40, 30));
+    await tapLabel(tester, 'Rotate');
+    await tapLabel(tester, 'Undo');
+    expect(find.bySemanticsLabel('Undo'), findsOneWidget);
+    await tapLabel(tester, 'Undo');
+    expect(find.bySemanticsLabel('Undo'), findsNothing);
     await tapContinue(tester);
 
-    expect(repo.saved!.corners, fullFrame);
+    expect(repo.saved!.corners, detected);
+    expect(repo.saved!.rotation, 0);
+  });
+
+  testWidgets('retake on a fresh scan deletes it and goes back', (
+    tester,
+  ) async {
+    await pumpEditor(tester, fresh: true);
+    await tapLabel(tester, 'Retake');
+    expect(documents.deleted, ['d1']);
+    expect(find.text('camera'), findsOneWidget);
+  });
+
+  testWidgets('system back also discards a fresh scan', (tester) async {
+    await pumpEditor(tester, fresh: true);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(documents.deleted, ['d1']);
+    expect(find.text('camera'), findsOneWidget);
+  });
+
+  testWidgets('a fresh import offers Discard instead of Retake', (
+    tester,
+  ) async {
+    await pumpEditor(tester, fresh: true, source: PageSource.gallery);
+    expect(find.bySemanticsLabel('Retake'), findsNothing);
+    await tapLabel(tester, 'Discard');
+    expect(documents.deleted, ['d1']);
+  });
+
+  testWidgets('re-cropping a saved page never deletes it', (tester) async {
+    await pumpEditor(tester);
+    await tapLabel(tester, 'Back');
+    expect(find.text('camera'), findsOneWidget);
+    expect(documents.deleted, isEmpty);
   });
 
   testWidgets('Rotate turns the view; drags still map to the original', (
@@ -223,8 +306,7 @@ void main() {
   ) async {
     final repo = await pumpEditor(tester);
 
-    await tester.tap(find.byIcon(LucideIcons.rotateCw));
-    await tester.pumpAndSettle();
+    await tapLabel(tester, 'Rotate');
     final size = imageSize(tester);
     // Turned 90° clockwise: the original top-left shows at the top right,
     // and screen-down is the original image's +x.
