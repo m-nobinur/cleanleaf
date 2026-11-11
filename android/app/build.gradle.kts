@@ -30,6 +30,11 @@ android {
         }
     }
 
+    // T-003: ORG_GRADLE_PROJECT_clLegacyJni=true stores native libs compressed.
+    packaging {
+        jniLibs { useLegacyPackaging = project.findProperty("clLegacyJni") == "true" }
+    }
+
     buildTypes {
         release {
             // Debug signing until the release key exists (decisions.md D-05).
@@ -48,4 +53,9 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // T-003 candidate C.
+    implementation("org.opencv:opencv:4.13.0")
 }

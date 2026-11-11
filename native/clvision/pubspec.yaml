@@ -1,0 +1,13 @@
+name: clvision
+description: Cleanleaf vision core (C++ over OpenCV static libs), FFI and JNI.
+publish_to: 'none'
+version: 0.0.1
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  code_assets: 1.2.1
+  hooks: 2.2.0
+  logging: 1.3.0
+  native_toolchain_cmake: 0.3.2
