@@ -2,6 +2,8 @@ import '../../../core/geometry/quad.dart';
 
 enum PageFilter { original, enhancedColor, grayscale, blackWhite }
 
+enum PageSource { camera, gallery, googleScanner }
+
 // Edge order: top, right, bottom, left.
 typedef EdgeAnchors = List<List<Point>>;
 
@@ -22,6 +24,7 @@ class DocumentPage(
   required final String originalPath,
   required final Quad corners,
   final Quad? detectedCorners,
+  final PageSource source = PageSource.camera,
   final EdgeAnchors anchors = noAnchors,
   final int rotation = 0,
   final PageFilter filter = PageFilter.enhancedColor,
@@ -42,6 +45,7 @@ class DocumentPage(
     originalPath: originalPath,
     corners: corners ?? this.corners,
     detectedCorners: detectedCorners,
+    source: source,
     anchors: anchors ?? this.anchors,
     rotation: rotation ?? this.rotation,
     filter: filter ?? this.filter,

@@ -26,6 +26,7 @@ class Pages extends Table {
   TextColumn get originalPath => text()();
   TextColumn get corners => text()();
   TextColumn get detectedCorners => text().nullable()();
+  TextColumn get source => text()();
   TextColumn get anchors => text()();
   IntColumn get rotation => integer()();
   TextColumn get filter => text()();

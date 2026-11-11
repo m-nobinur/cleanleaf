@@ -132,6 +132,7 @@ void main() {
         doc.id,
         original: Stream.value([1]),
         detectedCorners: detected,
+        source: PageSource.gallery,
       );
       expect(page.corners, detected);
 
@@ -140,6 +141,7 @@ void main() {
       final stored = (await pages.get(page.id))!;
       expect(stored.corners, fullFrame);
       expect(stored.detectedCorners, detected);
+      expect(stored.source, PageSource.gallery);
       expect((await addPage(doc.id)).detectedCorners, isNull);
       expect(await pages.get('missing'), isNull);
     });
