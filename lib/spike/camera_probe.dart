@@ -6,11 +6,9 @@ import 'dart:isolate';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
-import 'probe_a.dart';
 import 'probe_b.dart';
 import 'probe_camera.dart';
 import 'stats.dart';
@@ -21,7 +19,6 @@ const preset = String.fromEnvironment('PRESET', defaultValue: 'medium');
 void log(String msg) => print('CLBENCH $candidate/$preset $msg');
 
 ProbeCamera makeCamera() => switch (candidate) {
-  'A' => PluginProbeCamera(ResolutionPreset.values.byName(preset)),
   'B' => NativeProbeCamera(
     int.parse(preset.split('x').first),
     int.parse(preset.split('x').last),
