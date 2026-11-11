@@ -29,6 +29,15 @@ import 'features/capture/domain/scan_mode.dart';
 // 3. Result sheets for real fixture decodes, injected into the live screen.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await _run();
+  } on Object catch (e, stack) {
+    _log('ERROR $e\n$stack');
+  }
+  _log('DONE');
+}
+
+Future<void> _run() async {
   final dir = await _fixtures();
   final expected = (jsonDecode(
     File('${dir.path}/expected.json').readAsStringSync(),
@@ -46,7 +55,6 @@ Future<void> main() async {
     ),
   );
   await _Script(container.read(routerProvider), camera, decoded).run();
-  _log('DONE');
 }
 
 void _log(String line) => debugPrint('CLBENCH $line');
@@ -54,7 +62,8 @@ void _log(String line) => debugPrint('CLBENCH $line');
 Future<Directory> _fixtures() async {
   final root = await getExternalStorageDirectory();
   if (root == null) throw StateError('No external files dir');
-  final dir = Directory('${root.path}/codes');
+  // Created by the app, so adb's pushed files inside it stay readable.
+  final dir = Directory('${root.path}/codes')..createSync(recursive: true);
   final manifest = File('${dir.path}/expected.json');
   for (var i = 0; !manifest.existsSync() && i < 90; i++) {
     if (i == 0) _log('waiting for fixtures in ${dir.path}');
