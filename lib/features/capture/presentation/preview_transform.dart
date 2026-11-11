@@ -8,10 +8,8 @@ import '../../../core/geometry/quad.dart';
 /// Corners and focus points are already upright (D-38), so the texture's
 /// quarter turns never enter here.
 class PreviewTransform {
-  PreviewTransform({required Size frame, required this.view})
+  PreviewTransform({required Size frame, required Size view})
     : frameRect = _cover(frame, view);
-
-  final Size view;
 
   /// Where the whole frame lands in view coordinates; it overflows the view.
   final Rect frameRect;

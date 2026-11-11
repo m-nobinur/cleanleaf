@@ -263,6 +263,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
   @override
   Widget build(BuildContext context) {
     final light = _mode == ScanMode.receipt;
+    final auto = ref.watch(autoCaptureSettingProvider).value ?? true;
     return ShadTheme(
       data: light ? AppTheme.light : AppTheme.dark,
       child: AnnotatedRegion<SystemUiOverlayStyle>(
@@ -275,7 +276,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
               body: SafeArea(
                 child: Column(
                   children: [
-                    _topBar(),
+                    _topBar(auto: auto),
                     Expanded(child: _body(context)),
                     _bottomBar(),
                   ],
@@ -288,7 +289,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
     );
   }
 
-  Widget _topBar() => Padding(
+  Widget _topBar({required bool auto}) => Padding(
     padding: const EdgeInsets.symmetric(
       horizontal: Spacing.lg,
       vertical: Spacing.sm,
@@ -300,7 +301,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
           child: ModePills(mode: _mode, onChanged: _selectMode),
         ),
         AutoCaptureToggle(
-          enabled: ref.watch(autoCaptureSettingProvider).value ?? true,
+          enabled: auto,
           onChanged: (on) =>
               unawaited(ref.read(autoCaptureSettingProvider.notifier).set(on)),
         ),

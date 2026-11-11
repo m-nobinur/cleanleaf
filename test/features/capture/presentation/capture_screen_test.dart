@@ -8,6 +8,7 @@ import 'package:cleanleaf/features/capture/data/capture_providers.dart';
 import 'package:cleanleaf/features/capture/domain/document_camera.dart';
 import 'package:cleanleaf/features/capture/domain/scan_mode.dart';
 import 'package:cleanleaf/features/capture/presentation/capture_screen.dart';
+import 'package:cleanleaf/features/capture/presentation/quad_overlay.dart';
 import 'package:cleanleaf/features/gallery_import/data/gallery_import.dart';
 import 'package:cleanleaf/features/gallery_import/presentation/import_from_gallery.dart';
 import 'package:cleanleaf/features/library/domain/document_page.dart';
@@ -299,6 +300,8 @@ void main() {
     // never the ~40% a full-bleed preview would.
     expect(412 / texture.width, inInclusiveRange(0.75, 0.85));
     expect(texture.center.dx, closeTo(206, 0.5));
+    // The outline is drawn in the frame's coordinates, not the view's.
+    expect(tester.getRect(find.byType(QuadOverlay)), texture);
     expect(
       tester.getRect(find.bySemanticsLabel('Take photo')).top,
       greaterThanOrEqualTo(texture.bottom),
@@ -357,6 +360,35 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(scan.calls.single.mode, ScanMode.book);
+  });
+
+  testWidgets('a pill picked after scrolling glides back into view', (
+    tester,
+  ) async {
+    await pumpCapture(tester);
+    await tester.drag(
+      find.bySemanticsLabel('Document mode'),
+      const Offset(-400, 0),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.bySemanticsLabel('Book mode'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.takeException(), isNull);
+    final pill = tester.getRect(find.bySemanticsLabel('Book mode'));
+    expect(
+      pill.left,
+      greaterThanOrEqualTo(
+        tester.getRect(find.bySemanticsLabel('Close')).right,
+      ),
+    );
+    expect(
+      pill.right,
+      lessThanOrEqualTo(
+        tester.getRect(find.bySemanticsLabel('Auto-capture')).left,
+      ),
+    );
+    expect(find.text('Saves the spread as one page for now'), findsOneWidget);
   });
 
   testWidgets('the auto setting ticks, persists and holds on reopen', (
