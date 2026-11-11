@@ -21,6 +21,7 @@ import '../domain/document_camera.dart';
 import '../domain/scan_mode.dart';
 import 'auto_capture_setting.dart';
 import 'capture_controls.dart';
+import 'code_result_sheet.dart';
 import 'preview_transform.dart';
 import 'quad_overlay.dart';
 import 'scan_mode_sheet.dart';
@@ -44,6 +45,9 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
   final _detection = ValueNotifier<LiveDetection?>(null);
   final _focusPoint = ValueNotifier<Offset?>(null);
   StreamSubscription<LiveDetection>? _detections;
+  StreamSubscription<ScannedCode>? _codes;
+  // A decoded code's sheet is up; later decodes wait for Scan again.
+  bool _showingCode = false;
   Timer? _focusTimer;
 
   _Phase _phase = _Phase.starting;
@@ -65,6 +69,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
     WidgetsBinding.instance.addObserver(this);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     _detections = _camera.detections.listen(_onDetection, onError: _onError);
+    _codes = _camera.codes.listen(_onCode);
     _open();
   }
 
@@ -73,6 +78,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
     WidgetsBinding.instance.removeObserver(this);
     SystemChrome.setPreferredOrientations([]);
     _detections?.cancel();
+    _codes?.cancel();
     _focusTimer?.cancel();
     _generation++;
     unawaited(_camera.stop().catchError((_) {}));
@@ -133,6 +139,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
       _torch = false;
     });
     try {
+      await _camera.readCodes(_mode.codeFamily);
       final preview = await _camera.start();
       if (!mounted || generation != _generation) return;
       setState(() {
@@ -168,9 +175,44 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
   void _onDetection(LiveDetection detection) {
     if (_phase != _Phase.live || _busy) return;
     if (_failure == CameraFailure.inUse) setState(() => _failure = null);
+    if (_mode.codeFamily != null) return;
     ScanMetrics.liveFrame(hasQuad: detection.quad != null);
     _detection.value = detection;
     if (_auto && _autoCapture.onDetection(detection)) _capture();
+  }
+
+  Future<void> _onCode(ScannedCode code) async {
+    if (_phase != _Phase.live || _busy || _showingCode) return;
+    await _showCode(code);
+  }
+
+  Future<void> _showCode(ScannedCode code) async {
+    _showingCode = true;
+    unawaited(HapticFeedback.mediumImpact());
+    try {
+      await showCodeResult(context, code, openLink: _camera.openLink);
+    } finally {
+      _showingCode = false;
+    }
+  }
+
+  Future<void> _importCode(CodeFamily family) async {
+    ({ScannedCode? code})? picked;
+    await _cover(() async {
+      try {
+        picked = await ref.read(galleryCodeProvider)(family);
+      } on Object {
+        picked = (code: null);
+      }
+    });
+    final result = picked;
+    if (result == null || !mounted) return;
+    if (result.code case final code?) {
+      await _showCode(code);
+    } else {
+      ShadToaster.of(context)
+          .show(const ShadToast(title: Text('No code found in that photo')));
+    }
   }
 
   void _onError(Object error) {
@@ -227,7 +269,10 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
     }
   }
 
-  Future<void> _import() => _cover(() => importFromGallery(context, ref));
+  Future<void> _import() => switch (_mode.codeFamily) {
+    final family? => _importCode(family),
+    null => _cover(() => importFromGallery(context, ref)),
+  };
 
   Future<void> _toggleTorch() async {
     final on = !_torch;
@@ -254,6 +299,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
   void _selectMode(ScanMode mode) {
     if (mode == _mode) return;
     setState(() => _mode = mode);
+    unawaited(_camera.readCodes(mode.codeFamily).catchError((_) {}));
     unawaited(ref.read(lastScanModeProvider.notifier).set(mode));
   }
 
@@ -301,16 +347,17 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
           child: ModePills(mode: _mode, onChanged: _selectMode),
         ),
         const SizedBox(width: Spacing.sm),
-        ValueListenableBuilder(
-          valueListenable: _detection,
-          builder: (context, detection, _) => AutoCaptureToggle(
-            enabled: auto,
-            arming: _arming(detection),
-            onChanged: (on) => unawaited(
-              ref.read(autoCaptureSettingProvider.notifier).set(on),
+        if (_mode.codeFamily == null)
+          ValueListenableBuilder(
+            valueListenable: _detection,
+            builder: (context, detection, _) => AutoCaptureToggle(
+              enabled: auto,
+              arming: _arming(detection),
+              onChanged: (on) => unawaited(
+                ref.read(autoCaptureSettingProvider.notifier).set(on),
+              ),
             ),
           ),
-        ),
       ],
     ),
   );
@@ -332,9 +379,13 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
             label: _mode == ScanMode.receipt ? 'Add' : 'Import',
             onPressed: _import,
           ),
-          ShutterButton(
-            onPressed: _phase == _Phase.live && !_busy ? _capture : null,
-          ),
+          // Codes are read live; there is nothing to shoot.
+          if (_mode.codeFamily == null)
+            ShutterButton(
+              onPressed: _phase == _Phase.live && !_busy ? _capture : null,
+            )
+          else
+            const SizedBox(width: 76),
           SizedBox(
             width: 72,
             child: hasTorch
@@ -452,16 +503,12 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
                 builder: (context, point, _) =>
                     _FocusRing(point: point, color: colors.foreground),
               ),
-              if (_failure == CameraFailure.inUse || _mode == ScanMode.book)
+              if (_banner case final text?)
                 Align(
                   alignment: Alignment.topCenter,
                   child: Padding(
                     padding: const EdgeInsets.all(Spacing.lg),
-                    child: _Banner(
-                      _failure == CameraFailure.inUse
-                          ? 'Another app is using the camera'
-                          : 'Saves the spread as one page for now',
-                    ),
+                    child: _Banner(text),
                   ),
                 ),
             ],
@@ -470,6 +517,15 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
       },
     );
   }
+
+  String? get _banner => _failure == CameraFailure.inUse
+      ? 'Another app is using the camera'
+      : switch (_mode) {
+          ScanMode.book => 'Saves the spread as one page for now',
+          ScanMode.qrCode => 'Point at a QR code',
+          ScanMode.barcode => 'Line up the barcode',
+          _ => null,
+        };
 
   bool _arming(LiveDetection? detection) =>
       _auto &&
@@ -495,8 +551,8 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
 }
 
 /// A centred bracket guide sized to the mode's page: a tall receipt, an ID-1
-/// card, an ID-3 passport page or a two-page book spread. Documents have
-/// none; the live outline is the guide.
+/// card, an ID-3 passport page, a two-page book spread or a code reticle.
+/// Documents have none; the live outline is the guide.
 class _ModeGuide extends StatelessWidget {
   const _ModeGuide({required this.mode, required this.visible});
 
@@ -513,6 +569,9 @@ class _ModeGuide extends StatelessWidget {
       ScanMode.passport => (0.8, PageAspect.id3.ratio),
       // Two A5 pages side by side.
       ScanMode.book => (0.92, 2 * 148 / 210),
+      // Reticles: a square for QR, a wide slot for barcodes.
+      ScanMode.qrCode => (0.66, 1.0),
+      ScanMode.barcode => (0.86, 2.0),
       _ => (0.0, 1.0),
     };
     if (widthFactor == 0) return const SizedBox.shrink();

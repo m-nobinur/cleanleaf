@@ -1,6 +1,7 @@
 package com.bnwise.cleanleaf.camera
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -121,6 +122,26 @@ class CameraHost(
         x: Double,
         y: Double,
     ) = controller.focusAt(x, y)
+
+    override fun setCodeFormats(formats: Long) {
+        controller.codeFormats = formats.toInt()
+    }
+
+    // Decoded codes are untrusted: only web links leave the app, and the app itself never fetches them (D-47).
+    override fun openUrl(url: String): Boolean {
+        val uri = Uri.parse(url)
+        if (uri.scheme?.lowercase() !in setOf("http", "https") || uri.host.isNullOrEmpty()) return false
+        val intent =
+            Intent(Intent.ACTION_VIEW, uri)
+                .addCategory(Intent.CATEGORY_BROWSABLE)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return try {
+            context.startActivity(intent)
+            true
+        } catch (e: ActivityNotFoundException) {
+            false
+        }
+    }
 
     private fun isGranted() =
         ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED

@@ -328,20 +328,67 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
   });
 
-  testWidgets('code modes show as coming soon and cannot be picked', (
+  Future<void> scanCode(WidgetTester tester, ScannedCode code) async {
+    camera.scannedCodes.add(code);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+  }
+
+  testWidgets('QR mode reads codes live and shows one result at a time', (
     tester,
   ) async {
     await pumpCapture(tester);
-    expect(find.text('SOON'), findsNWidgets(2));
-    final qr = find.bySemanticsLabel('QR code mode, coming soon');
+    expect(camera.codeFamilies.last, isNull);
+    final qr = find.bySemanticsLabel('QR code mode');
     await tester.ensureVisible(qr);
     await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(qr);
     await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.bySemanticsLabel('Take photo'));
+    expect(camera.codeFamilies.last, CodeFamily.matrix);
+    expect(find.bySemanticsLabel('Take photo'), findsNothing);
+    expect(find.bySemanticsLabel('Auto-capture'), findsNothing);
+    expect(find.text('Point at a QR code'), findsOneWidget);
+
+    await scanCode(tester, (format: 'QR Code', text: 'https://example.org/a'));
+    expect(find.text('https://example.org/a'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(ShadSheet),
+        matching: find.text('QR CODE'),
+      ),
+      findsOneWidget,
+    );
+    // A second decode while the sheet is up is ignored.
+    await scanCode(tester, (format: 'QR Code', text: 'second'));
+    expect(find.text('second'), findsNothing);
+
+    await tester.tap(find.text('Open'));
     await tester.pump();
+    expect(camera.opened.single, Uri.parse('https://example.org/a'));
+
+    await tester.tap(find.text('Scan again'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('https://example.org/a'), findsNothing);
+    await scanCode(tester, (format: 'QR Code', text: 'plain text'));
+    expect(find.text('plain text'), findsOneWidget);
+    expect(find.text('Open'), findsNothing);
+    expect(scan.calls, isEmpty);
+  });
+
+  testWidgets('barcode mode opens directly and switches back to pages', (
+    tester,
+  ) async {
+    await pumpCapture(tester, mode: ScanMode.barcode);
+    expect(camera.codeFamilies.last, CodeFamily.linear);
+    expect(find.text('Line up the barcode'), findsOneWidget);
+    final document = find.bySemanticsLabel('Document mode');
+    await tester.ensureVisible(document);
     await tester.pump(const Duration(milliseconds: 300));
-    expect(scan.calls.single.mode, ScanMode.document);
+    await tester.tap(document);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(camera.codeFamilies.last, isNull);
+    expect(find.bySemanticsLabel('Take photo'), findsOneWidget);
   });
 
   testWidgets('book mode scrolls its pill into view and explains one page', (
