@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/theme/spacing.dart';
+import '../../scan_engine/presentation/scan_engine_dialog.dart';
 
 class SettingsRow {
   const SettingsRow({
@@ -23,6 +24,12 @@ const settingsRows = <SettingsRow>[
     icon: LucideIcons.lock,
     title: 'Private by design',
     subtitle: 'Your scans stay on this device.',
+  ),
+  SettingsRow(
+    icon: LucideIcons.scanLine,
+    title: 'Scanner engine',
+    subtitle: 'Cleanleaf or Google ML Kit',
+    onTap: showScanEngineDialog,
   ),
 ];
 
@@ -85,7 +92,10 @@ class _SettingsTile extends StatelessWidget {
     }
     return ShadButton.ghost(
       width: double.infinity,
-      height: 56,
+      // 0 sizes the button to its two-line content.
+      height: 0,
+      padding: const EdgeInsets.symmetric(vertical: Spacing.md),
+      expands: true,
       onPressed: () => onTap(context),
       child: content,
     );
