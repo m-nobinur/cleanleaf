@@ -64,12 +64,32 @@ const thirdPartyNotices = <ThirdPartyNotice>[
     assets: ['assets/licenses/LiteRT-NOTICE.txt', _apache],
   ),
   ThirdPartyNotice(
+    packages: ['zxing-cpp 3.1.1'],
+    assets: ['assets/licenses/zxing-cpp-NOTICE.txt', _apache],
+  ),
+  ThirdPartyNotice(
+    packages: ['libzueci'],
+    assets: ['assets/licenses/libzueci-LICENSE.txt'],
+  ),
+  ThirdPartyNotice(
     packages: ['DocAligner model weights (modified)'],
     assets: ['assets/licenses/DocAligner-NOTICE.txt', _apache],
   ),
   ThirdPartyNotice(
     packages: ['AndroidX CameraX and Kotlin coroutines'],
     assets: ['assets/licenses/AndroidX-NOTICE.txt', _apache],
+  ),
+  ThirdPartyNotice(
+    packages: ['Tesseract OCR, Tesseract4Android and trained data'],
+    assets: ['assets/licenses/Tesseract-NOTICE.txt', _apache],
+  ),
+  ThirdPartyNotice(
+    packages: ['Leptonica'],
+    assets: ['assets/licenses/Leptonica-LICENSE.txt'],
+  ),
+  ThirdPartyNotice(
+    packages: ['libjpeg 9f (Independent JPEG Group)'],
+    assets: ['assets/licenses/libjpeg-9f-README.ijg'],
   ),
   ThirdPartyNotice(
     packages: ['JetBrains Mono'],

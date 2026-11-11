@@ -1,0 +1,4 @@
+zxing-cpp 3.1.1 (https://github.com/zxing-cpp/zxing-cpp), reader modules only.
+Copyright ZXing authors, Nu-book Inc., Axel Waggershauser, Huy Cuong Nguyen
+and the other zxing-cpp contributors named in its source files.
+Licensed under the Apache License, Version 2.0.

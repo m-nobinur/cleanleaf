@@ -266,13 +266,61 @@ class CameraSession {
   }
 }
 
-/// Detection result for one analysis frame. Pixels never cross the bridge.
+/// A QR code or barcode read from an analysis frame.
+class DecodedCode {
+  DecodedCode({required this.format, required this.text});
+
+  /// zxing-cpp's name, e.g. "QR Code", "EAN-13".
+  String format;
+
+  String text;
+
+  List<Object?> _toList() {
+    return <Object?>[format, text];
+  }
+
+  Object encode() {
+    return _toList();
+  }
+
+  static DecodedCode decode(Object result) {
+    result as List<Object?>;
+    return DecodedCode(
+      format: result[0]! as String,
+      text: result[1]! as String,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! DecodedCode || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(format, other.format) && _deepEquals(text, other.text);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'DecodedCode(format: $format, text: $text)';
+  }
+}
+
+/// Result for one analysis frame. Pixels never cross the bridge.
 class CornerFrame {
   CornerFrame({
     this.corners,
     required this.confidence,
     required this.isStable,
     required this.timestampUs,
+    this.code,
   });
 
   /// TL, TR, BR, BL (x, y) normalized to the upright frame; null when no page.
@@ -284,8 +332,11 @@ class CornerFrame {
 
   int timestampUs;
 
+  /// Set only while reading codes (see `setCodeFormats`).
+  DecodedCode? code;
+
   List<Object?> _toList() {
-    return <Object?>[corners, confidence, isStable, timestampUs];
+    return <Object?>[corners, confidence, isStable, timestampUs, code];
   }
 
   Object encode() {
@@ -299,6 +350,7 @@ class CornerFrame {
       confidence: result[1]! as double,
       isStable: result[2]! as bool,
       timestampUs: result[3]! as int,
+      code: result[4] as DecodedCode?,
     );
   }
 
@@ -314,7 +366,8 @@ class CornerFrame {
     return _deepEquals(corners, other.corners) &&
         _deepEquals(confidence, other.confidence) &&
         _deepEquals(isStable, other.isStable) &&
-        _deepEquals(timestampUs, other.timestampUs);
+        _deepEquals(timestampUs, other.timestampUs) &&
+        _deepEquals(code, other.code);
   }
 
   @override
@@ -323,7 +376,7 @@ class CornerFrame {
 
   @override
   String toString() {
-    return 'CornerFrame(corners: $corners, confidence: $confidence, isStable: $isStable, timestampUs: $timestampUs)';
+    return 'CornerFrame(corners: $corners, confidence: $confidence, isStable: $isStable, timestampUs: $timestampUs, code: $code)';
   }
 }
 
@@ -346,8 +399,11 @@ class _PigeonCodec extends StandardMessageCodec {
     } else if (value is CameraSession) {
       buffer.putUint8(132);
       writeValue(buffer, value.encode());
-    } else if (value is CornerFrame) {
+    } else if (value is DecodedCode) {
       buffer.putUint8(133);
+      writeValue(buffer, value.encode());
+    } else if (value is CornerFrame) {
+      buffer.putUint8(134);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -368,6 +424,8 @@ class _PigeonCodec extends StandardMessageCodec {
       case 132:
         return CameraSession.decode(readValue(buffer)!);
       case 133:
+        return DecodedCode.decode(readValue(buffer)!);
+      case 134:
         return CornerFrame.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -534,6 +592,48 @@ class CameraHostApi {
     );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
       <Object?>[x, y],
+    );
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
+    return pigeonVar_replyValue! as bool;
+  }
+
+  /// `clv_code_formats` bits to read codes instead of detecting pages; 0
+  /// detects pages. Kept across sessions.
+  Future<void> setCodeFormats(int formats) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.cleanleaf.CameraHostApi.setCodeFormats$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[formats],
+    );
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+    _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
+  }
+
+  /// Opens an http(s) [url] in another app; false when nothing can.
+  Future<bool> openUrl(String url) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.cleanleaf.CameraHostApi.openUrl$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[url],
     );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(

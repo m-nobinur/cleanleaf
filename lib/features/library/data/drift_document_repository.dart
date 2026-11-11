@@ -19,14 +19,14 @@ class DriftDocumentRepository implements DocumentRepository {
       (_db.select(_db.documents)
             ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
           .watch()
-          .map((rows) => rows.map(_fromRow).toList());
+          .map((rows) => rows.map(documentFromRow).toList());
 
   @override
   Future<Document?> get(String id) async {
     final row = await (_db.select(
       _db.documents,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
-    return row == null ? null : _fromRow(row);
+    return row == null ? null : documentFromRow(row);
   }
 
   @override
@@ -39,7 +39,7 @@ class DriftDocumentRepository implements DocumentRepository {
       updatedAt: now,
     );
     await _db.into(_db.documents).insert(row);
-    return _fromRow(row);
+    return documentFromRow(row);
   }
 
   @override
@@ -57,12 +57,12 @@ class DriftDocumentRepository implements DocumentRepository {
     await (_db.delete(_db.documents)..where((t) => t.id.equals(id))).go();
     await _files.deleteDocument(id);
   }
-
-  Document _fromRow(DocumentRow r) => Document(
-    r.id,
-    title: r.title,
-    createdAt: DateTime.fromMillisecondsSinceEpoch(r.createdAt),
-    updatedAt: DateTime.fromMillisecondsSinceEpoch(r.updatedAt),
-    folderId: r.folderId,
-  );
 }
+
+Document documentFromRow(DocumentRow r) => Document(
+  r.id,
+  title: r.title,
+  createdAt: DateTime.fromMillisecondsSinceEpoch(r.createdAt),
+  updatedAt: DateTime.fromMillisecondsSinceEpoch(r.updatedAt),
+  folderId: r.folderId,
+);

@@ -352,7 +352,53 @@ data class CameraSession (
 }
 
 /**
- * Detection result for one analysis frame. Pixels never cross the bridge.
+ * A QR code or barcode read from an analysis frame.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class DecodedCode (
+  /** zxing-cpp's name, e.g. "QR Code", "EAN-13". */
+  val format: String,
+  val text: String
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): DecodedCode {
+      val format = pigeonVar_list[0] as String
+      val text = pigeonVar_list[1] as String
+      return DecodedCode(format, text)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      format,
+      text,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as DecodedCode
+    return CameraApiPigeonUtils.deepEquals(this.format, other.format) && CameraApiPigeonUtils.deepEquals(this.text, other.text)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + CameraApiPigeonUtils.deepHash(this.format)
+    result = 31 * result + CameraApiPigeonUtils.deepHash(this.text)
+    return result
+  }
+  override fun toString(): String {
+    return "DecodedCode(format=$format, text=$text)"
+  }
+}
+
+/**
+ * Result for one analysis frame. Pixels never cross the bridge.
  *
  * Generated class from Pigeon that represents data sent in messages.
  */
@@ -361,7 +407,9 @@ data class CornerFrame (
   val corners: List<Double>? = null,
   val confidence: Double,
   val isStable: Boolean,
-  val timestampUs: Long
+  val timestampUs: Long,
+  /** Set only while reading codes (see `setCodeFormats`). */
+  val code: DecodedCode? = null
 )
  {
   companion object {
@@ -370,7 +418,8 @@ data class CornerFrame (
       val confidence = pigeonVar_list[1] as Double
       val isStable = pigeonVar_list[2] as Boolean
       val timestampUs = pigeonVar_list[3] as Long
-      return CornerFrame(corners, confidence, isStable, timestampUs)
+      val code = pigeonVar_list[4] as DecodedCode?
+      return CornerFrame(corners, confidence, isStable, timestampUs, code)
     }
   }
   fun toList(): List<Any?> {
@@ -379,6 +428,7 @@ data class CornerFrame (
       confidence,
       isStable,
       timestampUs,
+      code,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -389,7 +439,7 @@ data class CornerFrame (
       return true
     }
     val other = other as CornerFrame
-    return CameraApiPigeonUtils.deepEquals(this.corners, other.corners) && CameraApiPigeonUtils.deepEquals(this.confidence, other.confidence) && CameraApiPigeonUtils.deepEquals(this.isStable, other.isStable) && CameraApiPigeonUtils.deepEquals(this.timestampUs, other.timestampUs)
+    return CameraApiPigeonUtils.deepEquals(this.corners, other.corners) && CameraApiPigeonUtils.deepEquals(this.confidence, other.confidence) && CameraApiPigeonUtils.deepEquals(this.isStable, other.isStable) && CameraApiPigeonUtils.deepEquals(this.timestampUs, other.timestampUs) && CameraApiPigeonUtils.deepEquals(this.code, other.code)
   }
 
   override fun hashCode(): Int {
@@ -398,10 +448,11 @@ data class CornerFrame (
     result = 31 * result + CameraApiPigeonUtils.deepHash(this.confidence)
     result = 31 * result + CameraApiPigeonUtils.deepHash(this.isStable)
     result = 31 * result + CameraApiPigeonUtils.deepHash(this.timestampUs)
+    result = 31 * result + CameraApiPigeonUtils.deepHash(this.code)
     return result
   }
   override fun toString(): String {
-    return "CornerFrame(corners=$corners, confidence=$confidence, isStable=$isStable, timestampUs=$timestampUs)"
+    return "CornerFrame(corners=$corners, confidence=$confidence, isStable=$isStable, timestampUs=$timestampUs, code=$code)"
   }
 }
 private open class CameraApiPigeonCodec : StandardMessageCodec() {
@@ -429,6 +480,11 @@ private open class CameraApiPigeonCodec : StandardMessageCodec() {
       }
       133.toByte() -> {
         (readValue(buffer) as? List<Any?>)?.let {
+          DecodedCode.fromList(it)
+        }
+      }
+      134.toByte() -> {
+        (readValue(buffer) as? List<Any?>)?.let {
           CornerFrame.fromList(it)
         }
       }
@@ -453,8 +509,12 @@ private open class CameraApiPigeonCodec : StandardMessageCodec() {
         stream.write(132)
         writeValue(stream, value.toList())
       }
-      is CornerFrame -> {
+      is DecodedCode -> {
         stream.write(133)
+        writeValue(stream, value.toList())
+      }
+      is CornerFrame -> {
+        stream.write(134)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -478,6 +538,13 @@ interface CameraHostApi {
   suspend fun setTorch(enabled: Boolean)
   /** [x] and [y] are normalized preview coordinates; true when focus locked. */
   suspend fun focusAt(x: Double, y: Double): Boolean
+  /**
+   * `clv_code_formats` bits to read codes instead of detecting pages; 0
+   * detects pages. Kept across sessions.
+   */
+  fun setCodeFormats(formats: Long)
+  /** Opens an http(s) [url] in another app; false when nothing can. */
+  fun openUrl(url: String): Boolean
 
   companion object {
     /** The codec used by CameraHostApi. */
@@ -621,6 +688,41 @@ interface CameraHostApi {
               }
               reply.reply(wrapped)
             }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.cleanleaf.CameraHostApi.setCodeFormats$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val formatsArg = args[0] as Long
+            val wrapped: List<Any?> = try {
+              api.setCodeFormats(formatsArg)
+              listOf(null)
+            } catch (exception: Throwable) {
+              CameraApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.cleanleaf.CameraHostApi.openUrl$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val urlArg = args[0] as String
+            val wrapped: List<Any?> = try {
+              listOf(api.openUrl(urlArg))
+            } catch (exception: Throwable) {
+              CameraApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)

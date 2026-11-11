@@ -67,8 +67,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     // decisions.md D-02a: optional Google scan engine, package mlkit/.
     implementation("com.google.android.gms:play-services-mlkit-document-scanner:16.0.0")
-    // T-032 spike probe only (ocrbench/): the three English OCR candidates.
+    // decisions.md D-13a: Tesseract OCR, package ocr/ (keep rules in proguard-rules.pro).
     implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
+    // T-032 spike probe only (ocrbench/): the three English OCR candidates.
     implementation("com.google.mlkit:text-recognition:16.0.1")
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.31.1")
     implementation("org.opencv:opencv:4.13.0")

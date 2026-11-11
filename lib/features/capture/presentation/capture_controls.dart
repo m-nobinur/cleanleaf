@@ -98,8 +98,8 @@ class HoldStillPill extends StatelessWidget {
   }
 }
 
-/// Every scan mode as a horizontally scrolling pill row; modes that aren't
-/// ready yet show "Soon". The selected pill scrolls into view.
+/// Every scan mode as a horizontally scrolling pill row. The selected pill
+/// scrolls into view.
 class ModePills extends StatefulWidget {
   const ModePills({super.key, required this.mode, required this.onChanged});
 
@@ -166,7 +166,7 @@ class _ModePillsState extends State<ModePills> {
                 key: _keys[m],
                 mode: m,
                 selected: m == widget.mode,
-                onTap: m.isAvailable ? () => widget.onChanged(m) : null,
+                onTap: () => widget.onChanged(m),
               ),
           ],
         ),
@@ -187,75 +187,45 @@ class _ModePill extends StatelessWidget {
 
   final ScanMode mode;
   final bool selected;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
     final colors = theme.colorScheme;
     final label = theme.textTheme.monoLabel;
-    final soon = onTap == null;
     return Semantics(
-      label: soon ? '${mode.label} mode, coming soon' : '${mode.label} mode',
+      label: '${mode.label} mode',
       button: true,
       selected: selected,
-      enabled: !soon,
       excludeSemantics: true,
       onTap: onTap,
       // The pill is 40 dp; the padding brings each target to 48 dp.
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: Spacing.xs / 2,
-                vertical: Spacing.xs,
-              ),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                height: 40,
-                alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
-                decoration: BoxDecoration(
-                  color: selected ? colors.navSelected : colors.nav,
-                  borderRadius: BorderRadius.circular(Radii.full),
-                ),
-                child: Text(
-                  mode.label.toUpperCase(),
-                  style: label.copyWith(
-                    color: selected
-                        ? colors.onNavSelected
-                        : soon
-                        ? colors.onNav.withValues(alpha: 0.5)
-                        : colors.onNav,
-                  ),
-                ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Spacing.xs / 2,
+            vertical: Spacing.xs,
+          ),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            height: 40,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+            decoration: BoxDecoration(
+              color: selected ? colors.navSelected : colors.nav,
+              borderRadius: BorderRadius.circular(Radii.full),
+            ),
+            child: Text(
+              mode.label.toUpperCase(),
+              style: label.copyWith(
+                color: selected ? colors.onNavSelected : colors.onNav,
               ),
             ),
-            if (soon)
-              Positioned(
-                top: 0,
-                right: Spacing.xs,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: Spacing.xs),
-                  decoration: BoxDecoration(
-                    color: colors.highlight,
-                    borderRadius: BorderRadius.circular(Radii.full),
-                  ),
-                  child: Text(
-                    'SOON',
-                    style: label.copyWith(
-                      fontSize: 9,
-                      color: colors.primaryForeground,
-                    ),
-                  ),
-                ),
-              ),
-          ],
+          ),
         ),
       ),
     );
@@ -365,7 +335,8 @@ class _AutoCaptureToggleState extends State<AutoCaptureToggle> {
   }
 }
 
-/// Icon over a text label, for the import shortcut beside the shutter.
+/// Icon over a text label, for the import shortcut beside the shutter and
+/// the review tools; muted and inert when [onPressed] is null.
 class LabeledIconButton extends StatelessWidget {
   const LabeledIconButton({
     super.key,
@@ -376,15 +347,18 @@ class LabeledIconButton extends StatelessWidget {
 
   final IconData icon;
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
-    final color = theme.colorScheme.foreground;
+    final color = onPressed == null
+        ? theme.colorScheme.mutedForeground
+        : theme.colorScheme.foreground;
     return Semantics(
       label: label,
       button: true,
+      enabled: onPressed != null,
       excludeSemantics: true,
       onTap: onPressed,
       child: GestureDetector(
@@ -398,7 +372,12 @@ class LabeledIconButton extends StatelessWidget {
             children: [
               Icon(icon, size: 24, color: color),
               const SizedBox(height: Spacing.xs),
-              Text(label, style: theme.textTheme.small.copyWith(color: color)),
+              Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                style: theme.textTheme.small.copyWith(color: color),
+              ),
             ],
           ),
         ),

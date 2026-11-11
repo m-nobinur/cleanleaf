@@ -7,7 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:native_toolchain_cmake/native_toolchain_cmake.dart';
 
 // Builds native/clvision into libclvision against static OpenCV 4.13.0
-// (decisions.md D-10) and the LiteRT C API (D-11). Archives are SHA-256
+// (decisions.md D-10), the LiteRT C API (D-11) and zxing-cpp (D-47). Archives are SHA-256
 // verified and cached per user in ~/.cache/cleanleaf so every checkout and
 // worktree shares one copy.
 
@@ -40,6 +40,15 @@ const _tensorFlowTarball = (
   url: 'https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.21.0.tar.gz',
   file: 'tensorflow-2.21.0.tar.gz',
   sha256: 'ef3568bb4865d6c1b2564fb5689c19b6b9a5311572cd1f2ff9198636a8520921',
+);
+
+// QR and barcode readers (decisions.md D-47), compiled into clvision.
+const _zxingVersion = '3.1.1';
+const _zxingTarball = (
+  url:
+      'https://github.com/zxing-cpp/zxing-cpp/releases/download/v$_zxingVersion/zxing-cpp-$_zxingVersion.tar.gz',
+  file: 'zxing-cpp-$_zxingVersion.tar.gz',
+  sha256: 'c3c02c29c0b519de7bd4e25b376e606e87f0761befd1282815642a2246613d14',
 );
 
 // Host build for `flutter test`: only the modules and codecs clvision uses.
@@ -85,6 +94,7 @@ void main(List<String> args) async {
     final code = input.config.code;
     final cache = Directory('${Platform.environment['HOME']}/.cache/cleanleaf');
     final litert = await _litertAarDir(cache, logger);
+    final zxing = await _zxingSource(cache, logger);
     final (:openCv, :litertLibrary) = switch (code.targetOS) {
       OS.android => (
         openCv: await _androidOpenCv(cache, logger),
@@ -108,6 +118,7 @@ void main(List<String> args) async {
         'OpenCV_DIR': openCv,
         'LITERT_INCLUDE_DIR': '$litert/headers',
         'LITERT_LIBRARY': litertLibrary,
+        'ZXING_SOURCE_DIR': zxing,
         'CMAKE_INSTALL_PREFIX': install.toFilePath(),
       },
     ).run(input: input, output: output, logger: cmakeLogger);
@@ -181,6 +192,17 @@ Future<String> _litertAarDir(Directory cache, Logger logger) async {
     });
   }
   return dir.path;
+}
+
+Future<String> _zxingSource(Directory cache, Logger logger) async {
+  final dir = Directory('${cache.path}/zxing-cpp-$_zxingVersion');
+  if (!dir.existsSync()) {
+    final tarball = await _download(cache, _zxingTarball, logger);
+    await _extractInto(dir, (tmp) async {
+      await _run('tar', ['xzf', tarball.path, '-C', tmp.path]);
+    });
+  }
+  return '${dir.path}/zxing-cpp-$_zxingVersion';
 }
 
 String _androidAbi(Architecture arch) => switch (arch) {

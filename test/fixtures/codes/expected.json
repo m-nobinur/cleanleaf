@@ -1,0 +1,17 @@
+{
+ "qr_v10_1.5ppm.jpg": "https://example.org/cleanleaf/receipt?id=8f3a2c91&total=1249.50&currency=BDT&items=12&note=Thanks+for+shopping+with+us.+Keep+this+code+for+returns+within+30+days.+Store+4471",
+ "qr_v10_2.0ppm.jpg": "https://example.org/cleanleaf/receipt?id=8f3a2c91&total=1249.50&currency=BDT&items=12&note=Thanks+for+shopping+with+us.+Keep+this+code+for+returns+within+30+days.+Store+4471",
+ "qr_v10_2.5ppm.jpg": "https://example.org/cleanleaf/receipt?id=8f3a2c91&total=1249.50&currency=BDT&items=12&note=Thanks+for+shopping+with+us.+Keep+this+code+for+returns+within+30+days.+Store+4471",
+ "qr_v10_3.0ppm.jpg": "https://example.org/cleanleaf/receipt?id=8f3a2c91&total=1249.50&currency=BDT&items=12&note=Thanks+for+shopping+with+us.+Keep+this+code+for+returns+within+30+days.+Store+4471",
+ "qr_v10_4.0ppm.jpg": "https://example.org/cleanleaf/receipt?id=8f3a2c91&total=1249.50&currency=BDT&items=12&note=Thanks+for+shopping+with+us.+Keep+this+code+for+returns+within+30+days.+Store+4471",
+ "qr_v2_small.jpg": "https://example.org/a",
+ "qr_utf8.jpg": "নমস্কার, Cleanleaf ✓ 📄",
+ "ean13_1.0ppm.jpg": "5901234123457",
+ "code128_1.0ppm.jpg": "CL-2026-000731",
+ "ean13_1.5ppm.jpg": "5901234123457",
+ "code128_1.5ppm.jpg": "CL-2026-000731",
+ "ean13_2.0ppm.jpg": "5901234123457",
+ "code128_2.0ppm.jpg": "CL-2026-000731",
+ "qr_v10_1280.jpg": "https://example.org/cleanleaf/receipt?id=8f3a2c91&total=1249.50&currency=BDT&items=12&note=Thanks+for+shopping+with+us.+Keep+this+code+for+returns+within+30+days.+Store+4471",
+ "no_code.jpg": null
+}

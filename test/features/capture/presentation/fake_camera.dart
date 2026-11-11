@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cleanleaf/core/geometry/quad.dart';
 import 'package:cleanleaf/features/capture/domain/document_camera.dart';
+import 'package:cleanleaf/features/capture/domain/scan_mode.dart';
 
 class FakeCamera implements DocumentCamera {
   CameraPermission permission = CameraPermission.granted;
@@ -13,6 +14,9 @@ class FakeCamera implements DocumentCamera {
   bool openedSettings = false;
   final torch = <bool>[];
   final focused = <Point>[];
+  final codeFamilies = <CodeFamily?>[];
+  final scannedCodes = StreamController<ScannedCode>.broadcast();
+  final opened = <Uri>[];
 
   @override
   Future<CameraPermission> requestPermission() async => permission;
@@ -56,4 +60,16 @@ class FakeCamera implements DocumentCamera {
 
   @override
   Stream<LiveDetection> get detections => frames.stream;
+
+  @override
+  Future<void> readCodes(CodeFamily? family) async => codeFamilies.add(family);
+
+  @override
+  Stream<ScannedCode> get codes => scannedCodes.stream;
+
+  @override
+  Future<bool> openLink(Uri link) async {
+    opened.add(link);
+    return true;
+  }
 }
