@@ -319,7 +319,7 @@ void main() {
     expect(repo.saved!.corners.topLeft.y, closeTo(0.2, 1e-6));
   });
 
-  testWidgets('opens zoomed to the page; double-tap shows the whole photo', (
+  testWidgets('opens zoomed to the page; double-tap swaps photo and page', (
     tester,
   ) async {
     await pumpEditor(tester);
@@ -327,12 +327,18 @@ void main() {
     final page = imageSize(tester);
     expect(page.width, greaterThan(stage.width), reason: 'zoomed in');
 
-    await tester.tap(find.byType(CropCanvas));
-    await tester.pump(const Duration(milliseconds: 100));
-    await tester.tap(find.byType(CropCanvas));
-    await tester.pumpAndSettle();
+    Future<void> doubleTap() async {
+      await tester.tap(find.byType(CropCanvas));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.byType(CropCanvas));
+      await tester.pumpAndSettle();
+    }
 
+    await doubleTap();
     expect(imageSize(tester).width, lessThan(stage.width));
+
+    await doubleTap();
+    expect(imageSize(tester).width, closeTo(page.width, 1e-6));
   });
 
   testWidgets('a full-frame crop opens on the whole photo', (tester) async {
