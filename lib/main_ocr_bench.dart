@@ -17,6 +17,20 @@ Future<void> main() async {
   final dir = Directory(
     '${(await getExternalStorageDirectory())!.path}/ocr-bench',
   )..createSync();
+  // Every input dir is app-created so files adb pushes into it stay readable.
+  for (final sub in const [
+    'pages',
+    'tess_best/tessdata',
+    'tess_fast/tessdata',
+    'models/v5m_det',
+    'models/v5_en_rec',
+    'models/v6s_det',
+    'models/v6s_rec',
+    'models/v6t_det',
+    'models/v6t_rec',
+  ]) {
+    Directory('${dir.path}/$sub').createSync(recursive: true);
+  }
   debugPrint('CLBENCH waiting for inputs in ${dir.path}');
   try {
     final go = File('${dir.path}/go.json');
