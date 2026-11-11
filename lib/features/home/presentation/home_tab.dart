@@ -17,6 +17,7 @@ class HomeTab extends StatefulWidget {
     required this.onHelp,
     required this.onSettings,
     required this.onScan,
+    required this.onImport,
     required this.onExport,
     required this.onOpenFiles,
     required this.onMenu,
@@ -28,6 +29,7 @@ class HomeTab extends StatefulWidget {
   final VoidCallback onHelp;
   final VoidCallback onSettings;
   final VoidCallback onScan;
+  final VoidCallback onImport;
 
   /// Null when there is nothing to export.
   final VoidCallback? onExport;
@@ -105,13 +107,13 @@ class _HomeTabState extends State<HomeTab> {
                 caption: 'Documents, ID cards, receipts',
                 onTap: widget.onScan,
               ),
-              const BentoTile(
-                key: ValueKey('tile-import'),
+              BentoTile(
+                key: const ValueKey('tile-import'),
                 tone: TileTone.mist,
                 icon: LucideIcons.images,
                 title: 'Import',
                 caption: 'From your photos',
-                badge: 'SOON',
+                onTap: widget.onImport,
               ),
               BentoTile(
                 key: const ValueKey('tile-export'),
