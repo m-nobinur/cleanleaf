@@ -1,5 +1,7 @@
 import 'package:drift/drift.dart';
 
+import 'app_database.steps.dart';
+
 part 'app_database.g.dart';
 
 // Timestamps are epoch milliseconds; drift's dateTime() keeps only seconds.
@@ -33,6 +35,13 @@ class Pages extends Table {
   TextColumn get filterParams => text()();
   TextColumn get renderPath => text().nullable()();
   TextColumn get thumbPath => text().nullable()();
+  // Null until the page is queued for OCR (decisions.md D-13a).
+  TextColumn get ocrStatus => text().nullable()();
+  TextColumn get ocrEngine => text().nullable()();
+  TextColumn get ocrLanguage => text().nullable()();
+  TextColumn get ocrText => text().nullable()();
+  // JSON lines with their words, boxes normalized to the image read.
+  TextColumn get ocrLines => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -43,13 +52,27 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) => m.createAll(),
-    // No onUpgrade yet: drift's default throws on a version bump without steps.
-    // Add them with `dart run drift_dev make-migrations` when bumping schemaVersion.
+    // To change the schema: bump schemaVersion, run
+    // `dart run drift_dev make-migrations`, add the step here (D-26).
+    onUpgrade: stepByStep(
+      from1To2: (m, schema) async {
+        final p = schema.pages;
+        for (final column in [
+          p.ocrStatus,
+          p.ocrEngine,
+          p.ocrLanguage,
+          p.ocrText,
+          p.ocrLines,
+        ]) {
+          await m.addColumn(p, column);
+        }
+      },
+    ),
     beforeOpen: (details) => customStatement('PRAGMA foreign_keys = ON'),
   );
 }
