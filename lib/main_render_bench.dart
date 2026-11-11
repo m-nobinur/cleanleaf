@@ -35,7 +35,7 @@ Future<void> runRenderBench(String dir, void Function(String) log) async {
   const renderer = NativePageRenderer();
   log('CLBENCH cpus ${Platform.numberOfProcessors}');
   final watch = Stopwatch()..start();
-  final bmp = syntheticPageBmp(width, height, shadow: true);
+  final bmp = syntheticPageBmp(width, height, shadow: 0.55);
   final jpeg = await renderer.thumbnail(bmp, maxSide: math.max(width, height));
   final input = File('$dir/bench_input.jpg')..writeAsBytesSync(jpeg);
   log(
@@ -75,12 +75,12 @@ Future<void> runRenderBench(String dir, void Function(String) log) async {
 /// 24-bit BMP of a light page with text-like bars, a grey ramp strip, a dark
 /// marker near its top-left and dust specks, on a noisy desk. Content lies in
 /// scene fractions x 0.17–0.75, y 0.18–0.78, so any quad around that holds it.
-/// [shadow] darkens the scene towards the left.
+/// [shadow] is how much darker the left edge is than the right (0..1).
 Uint8List syntheticPageBmp(
   int width,
   int height, {
   Quad quad = _benchQuad,
-  bool shadow = false,
+  double shadow = 0,
 }) {
   final rowSize = (width * 3 + 3) & ~3;
   final bytes = Uint8List(54 + rowSize * height);
@@ -121,7 +121,7 @@ Uint8List syntheticPageBmp(
         g = 70;
         red = 95;
       }
-      final light = shadow ? 0.45 + 0.55 * fx : 1.0;
+      final light = 1 - shadow * (1 - fx);
       bytes[offset++] = ((b + (r & 15) - 8) * light).round().clamp(0, 255);
       bytes[offset++] = ((g + (r >> 4 & 15) - 8) * light).round().clamp(0, 255);
       bytes[offset++] = ((red + (r >> 8 & 15) - 8) * light).round().clamp(

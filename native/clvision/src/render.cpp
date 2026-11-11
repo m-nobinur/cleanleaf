@@ -187,11 +187,12 @@ void gaussianAdaptiveThreshold(cv::Mat& page, int block, double c) {
 }
 
 // Adaptive threshold finds ink at any shading but hollows strokes wider than about block/7,
-// so deep-dark areas of the shadow-free page are filled in as ink too.
+// so deep-dark areas of the shadow-free page are filled in as ink too. The fill stays below
+// 0.35 * 255, where keepDarkContent leaves the deepest shadowed paper, so shadows stay white.
 void blackWhite(cv::Mat& page) {
   cv::Mat solid = page.clone();
   divideBackground(solid);
-  cv::threshold(solid, solid, 128, 255, cv::THRESH_BINARY);
+  cv::threshold(solid, solid, 80, 255, cv::THRESH_BINARY);
   gaussianAdaptiveThreshold(page, oddKernel(std::min(page.cols, page.rows) / 40.0), 12);
   cv::bitwise_and(page, solid, page);
   removeSpecks(page);

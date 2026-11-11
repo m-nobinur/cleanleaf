@@ -36,9 +36,11 @@ void main() {
   group('synthetic page', () {
     late String plain;
     late String shadowed;
+    late String deepShadow;
     setUpAll(() async {
       plain = await writeScene('plain.jpg');
-      shadowed = await writeScene('shadowed.jpg', shadow: true);
+      shadowed = await writeScene('shadowed.jpg', shadow: 0.55);
+      deepShadow = await writeScene('deep_shadow.jpg', shadow: 0.8);
     });
 
     test('full frame without a filter is an identity', () async {
@@ -108,9 +110,12 @@ void main() {
       final path = '${temp.path}/exif6.jpg';
       File(path).writeAsBytesSync(bytes);
 
-      final out = decode(await render(path, sceneQuad, PageFilter.original));
-      expectSize(out, naturalSize(sceneQuad, sceneWidth, sceneHeight));
-      expect(meanLumaAt(out, marker), lessThan(80));
+      // Colour and grayscale decodes are separate paths.
+      for (final filter in [PageFilter.original, PageFilter.blackWhite]) {
+        final out = decode(await render(path, sceneQuad, filter));
+        expectSize(out, naturalSize(sceneQuad, sceneWidth, sceneHeight));
+        expect(meanLumaAt(out, marker), lessThan(80), reason: filter.name);
+      }
 
       final thumb = decode(await renderer.thumbnail(bytes));
       expectSize(thumb, (320, 240));
@@ -135,6 +140,15 @@ void main() {
         );
         expect(enhanced, lessThan(original * 0.25), reason: filter.name);
       }
+    });
+
+    test('B&W keeps deeply shadowed paper white', () async {
+      final bw = decode(
+        await render(deepShadow, sceneQuad, PageFilter.blackWhite),
+      );
+      // Blank paper left of the text, about 36% as bright as the lightest paper.
+      expect(meanLumaAt(bw, (x: 0.06, y: 0.6)), greaterThan(200));
+      expect(meanLumaAt(bw, marker), lessThan(80));
     });
 
     test('thumbnail fits the long side and never upscales', () async {
@@ -240,7 +254,7 @@ void main() {
   });
 }
 
-Future<String> writeScene(String name, {bool shadow = false}) async {
+Future<String> writeScene(String name, {double shadow = 0}) async {
   final bmp = syntheticPageBmp(
     sceneWidth,
     sceneHeight,
