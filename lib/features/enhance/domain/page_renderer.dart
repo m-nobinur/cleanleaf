@@ -12,7 +12,8 @@ const aspectRatioParam = 'aspectRatio';
 enum PageAspect {
   a4(math.sqrt2),
   letter(11 / 8.5),
-  id1(85.6 / 53.98);
+  id1(85.6 / 53.98),
+  id3(125 / 88);
 
   const PageAspect(this.ratio);
 

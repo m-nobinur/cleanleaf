@@ -31,29 +31,41 @@ extension ScanModeLabels on ScanMode {
   String get label => switch (this) {
     ScanMode.document => 'Document',
     ScanMode.idCard => 'ID card',
+    ScanMode.passport => 'Passport',
     ScanMode.receipt => 'Receipt',
     ScanMode.book => 'Book',
+    ScanMode.qrCode => 'QR code',
+    ScanMode.barcode => 'Barcode',
   };
 
   String get caption => switch (this) {
     ScanMode.document => 'Pages, letters, forms',
     ScanMode.idCard => 'Snaps to card size',
+    ScanMode.passport => 'Photo page, snaps to size',
     ScanMode.receipt => 'Long, narrow slips',
-    ScanMode.book => 'Two-page spreads',
+    ScanMode.book => 'Two-page spread as one page',
+    ScanMode.qrCode => 'Read links and text',
+    ScanMode.barcode => 'Read product codes',
   };
 
   IconData get icon => switch (this) {
     ScanMode.document => LucideIcons.fileText,
     ScanMode.idCard => LucideIcons.idCard,
+    ScanMode.passport => LucideIcons.bookUser,
     ScanMode.receipt => LucideIcons.receipt,
     ScanMode.book => LucideIcons.bookOpen,
+    ScanMode.qrCode => LucideIcons.scanQrCode,
+    ScanMode.barcode => LucideIcons.scanBarcode,
   };
 
   TileTone get tone => switch (this) {
     ScanMode.document => TileTone.leaf,
     ScanMode.idCard => TileTone.mist,
+    ScanMode.passport => TileTone.mist,
     ScanMode.receipt => TileTone.ember,
     ScanMode.book => TileTone.mist,
+    ScanMode.qrCode => TileTone.mist,
+    ScanMode.barcode => TileTone.mist,
   };
 }
 

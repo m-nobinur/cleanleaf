@@ -185,16 +185,18 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets('book is disabled and close dismisses the sheet', (
+    testWidgets('QR code is disabled and close dismisses the sheet', (
       tester,
     ) async {
       await pumpHome(tester);
       await tapAndSettle(tester, find.byKey(const ValueKey('tile-scan')));
-      await tapAndSettle(tester, find.byKey(const ValueKey(ScanMode.book)));
-      expect(find.text('Book'), findsOneWidget);
+      final qr = find.byKey(const ValueKey(ScanMode.qrCode));
+      await tester.ensureVisible(qr);
+      await tapAndSettle(tester, qr);
+      expect(find.text('QR code'), findsOneWidget);
 
       await tapAndSettle(tester, find.bySemanticsLabel('Close'));
-      expect(find.text('Book'), findsNothing);
+      expect(find.text('QR code'), findsNothing);
       expect(find.textContaining('capture:'), findsNothing);
     });
 
