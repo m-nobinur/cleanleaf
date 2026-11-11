@@ -42,6 +42,9 @@ DocumentPage pageFromRow(PageRow r) => DocumentPage(
   index: r.pageIndex,
   originalPath: r.originalPath,
   corners: decodeCorners(r.corners),
+  detectedCorners: r.detectedCorners == null
+      ? null
+      : decodeCorners(r.detectedCorners!),
   anchors: decodeAnchors(r.anchors),
   rotation: r.rotation,
   filter: PageFilter.values.byName(r.filter),

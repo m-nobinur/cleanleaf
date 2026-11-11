@@ -32,11 +32,20 @@ class DriftPageRepository implements PageRepository {
       (await _byDocument(documentId).get()).map(pageFromRow).toList();
 
   @override
+  Future<DocumentPage?> get(String pageId) async {
+    final row = await (_db.select(
+      _db.pages,
+    )..where((t) => t.id.equals(pageId))).getSingleOrNull();
+    return row == null ? null : pageFromRow(row);
+  }
+
+  @override
   Future<DocumentPage> add(
     String documentId, {
     required Stream<List<int>> original,
-    required Quad corners,
+    required Quad? detectedCorners,
   }) async {
+    final corners = detectedCorners ?? fullFrame;
     final id = newId();
     final originalPath = await _files.writePageFile(
       documentId,
@@ -53,6 +62,7 @@ class DriftPageRepository implements PageRepository {
           index: count,
           originalPath: originalPath,
           corners: corners,
+          detectedCorners: detectedCorners,
         );
         await _db
             .into(_db.pages)
@@ -63,6 +73,11 @@ class DriftPageRepository implements PageRepository {
                 pageIndex: page.index,
                 originalPath: originalPath,
                 corners: encodeCorners(corners),
+                detectedCorners: Value.absentIfNull(
+                  detectedCorners == null
+                      ? null
+                      : encodeCorners(detectedCorners),
+                ),
                 anchors: encodeAnchors(page.anchors),
                 rotation: page.rotation,
                 filter: page.filter.name,
