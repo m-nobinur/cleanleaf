@@ -49,3 +49,13 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Same CameraX version as camera_android_camerax 0.7.6+1.
+    val camerax = "1.6.2"
+    implementation("androidx.camera:camera-core:$camerax")
+    implementation("androidx.camera:camera-camera2:$camerax")
+    implementation("androidx.camera:camera-lifecycle:$camerax")
+    implementation("androidx.concurrent:concurrent-futures-ktx:1.1.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+}

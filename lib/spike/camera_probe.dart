@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import 'probe_a.dart';
+import 'probe_b.dart';
 import 'probe_camera.dart';
 import 'stats.dart';
 
@@ -21,6 +22,10 @@ void log(String msg) => print('CLBENCH $candidate/$preset $msg');
 
 ProbeCamera makeCamera() => switch (candidate) {
   'A' => PluginProbeCamera(ResolutionPreset.values.byName(preset)),
+  'B' => NativeProbeCamera(
+    int.parse(preset.split('x').first),
+    int.parse(preset.split('x').last),
+  ),
   _ => throw UnsupportedError('CANDIDATE=$candidate'),
 };
 
@@ -201,6 +206,7 @@ class Bench {
     log('STREAM start ms=${sw.elapsedMilliseconds}');
     await Future<void>.delayed(const Duration(seconds: 2));
     await measure('stream', 15);
+    await logNativeStats();
 
     resetStream();
     final shotsSw = Stopwatch()..start();
@@ -229,6 +235,7 @@ class Bench {
     final s = shotsSw.elapsedMicroseconds / 1e6;
     log('STILLS shutterMs ${pct(shutter)} streamFpsDuring=${fps(s)}');
     log('STILLS interArrivalMs ${pct(interArrivalMs)}');
+    await logNativeStats();
 
     await _step('FOCUS', () => camera.focus(0.5, 0.5));
     await _step('TORCH on', () => camera.torch(true));
@@ -238,6 +245,11 @@ class Bench {
     await Future<void>.delayed(const Duration(seconds: 1));
     await _step('AELOCK off', () => camera.lockExposure(false));
     await camera.stopStream();
+  }
+
+  Future<void> logNativeStats() async {
+    final cam = camera;
+    if (cam is NativeProbeCamera) log('native ${await cam.stats()}');
   }
 
   Future<void> _step(String name, Future<Object?> Function() action) async {
