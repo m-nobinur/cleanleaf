@@ -134,7 +134,11 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> audit(WidgetTester tester, String name) async {
+  Future<void> audit(
+    WidgetTester tester,
+    String name, {
+    bool labels = true,
+  }) async {
     final dir = _shotsDir;
     if (dir != null) {
       final image = await captureImage(find.byType(ShadApp).evaluate().single);
@@ -146,7 +150,9 @@ void main() {
     expect(tester.takeException(), isNull, reason: name);
     await expectLater(tester, meetsGuideline(textContrastGuideline));
     await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
-    await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+    if (labels) {
+      await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+    }
   }
 
   final ellipsis = find
@@ -284,6 +290,50 @@ void main() {
         );
         await tester.pumpAndSettle();
         await audit(tester, '${mode}_code_result');
+      });
+
+      for (final scanMode in [ScanMode.document, ScanMode.receipt]) {
+        testWidgets('live camera ${scanMode.name}', (tester) async {
+          tester.view.physicalSize = const Size(720, 1560);
+          tester.view.devicePixelRatio = 2;
+          addTearDown(tester.view.reset);
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                documentCameraProvider.overrideWithValue(FakeCamera()),
+                settingsStoreProvider.overrideWithValue(MemorySettingsStore()),
+              ],
+              child: ShadApp(
+                theme: theme,
+                home: CaptureScreen(mode: scanMode),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          // The tap-to-focus preview has no TalkBack label yet; reported in
+          // T-036.result for the capture owner (this ticket avoids capture/).
+          await audit(tester, '${mode}_camera_${scanMode.name}', labels: false);
+        });
+      }
+
+      testWidgets('picker with a long library scrolls lazily', (tester) async {
+        await pumpApp(tester, theme, extra: 12);
+        await tap(tester, find.byKey(const ValueKey('tile-edit')));
+        expect(tester.takeException(), isNull);
+        final lastRow = find.text('Receipt — hardware store');
+        await tester.scrollUntilVisible(
+          lastRow,
+          200,
+          scrollable: find
+              .descendant(
+                of: find.byType(ShadSheet),
+                matching: find.byType(Scrollable),
+              )
+              .last,
+        );
+        await tap(tester, lastRow);
+        expect(find.text('Receipt — hardware store'), findsWidgets);
+        expect(find.bySemanticsLabel('Share PDF'), findsOneWidget);
       });
 
       testWidgets('camera permission notice', (tester) async {
