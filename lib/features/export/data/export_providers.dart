@@ -7,17 +7,29 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/storage/storage_providers.dart';
 import '../../library/data/library_providers.dart';
+import '../domain/export_jpg.dart';
 import '../domain/export_pdf.dart';
 import 'pdf_isolate_builder.dart';
+
+Future<Directory> _exportDir() async =>
+    Directory(p.join((await getTemporaryDirectory()).path, 'export'));
 
 final exportPdfProvider = Provider<ExportPdf>(
   (ref) => ExportPdf(
     documents: ref.watch(documentRepositoryProvider),
     pages: ref.watch(pageRepositoryProvider),
     resolve: ref.watch(fileStoreProvider).resolve,
-    outputDir: () async =>
-        Directory(p.join((await getTemporaryDirectory()).path, 'export')),
+    outputDir: _exportDir,
     build: buildPdfInIsolate,
+  ),
+);
+
+final exportJpgProvider = Provider<ExportJpg>(
+  (ref) => ExportJpg(
+    documents: ref.watch(documentRepositoryProvider),
+    pages: ref.watch(pageRepositoryProvider),
+    resolve: ref.watch(fileStoreProvider).resolve,
+    outputDir: _exportDir,
   ),
 );
 
@@ -39,3 +51,15 @@ final shareDocumentPdfProvider =
         );
       },
     );
+
+/// Copies the page images to named JPGs in the app cache, then shares them all.
+final shareDocumentJpgProvider = Provider<Future<void> Function(String)>(
+  (ref) => (documentId) async {
+    final files = await ref.read(exportJpgProvider)(documentId);
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [for (final f in files) XFile(f.path, mimeType: 'image/jpeg')],
+      ),
+    );
+  },
+);

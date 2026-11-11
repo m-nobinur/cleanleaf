@@ -12,12 +12,14 @@ class FilesTab extends StatefulWidget {
   const FilesTab({
     super.key,
     required this.documents,
+    required this.onOpen,
     required this.onMenu,
     required this.bottomInset,
   });
 
   /// Null while loading.
   final List<Document>? documents;
+  final void Function(Document) onOpen;
   final void Function(Document) onMenu;
 
   /// Space kept clear for the floating bottom bar.
@@ -53,6 +55,7 @@ class _FilesTabState extends State<FilesTab> {
               : _DocumentList(
                   documents: documents,
                   layout: _layout,
+                  onOpen: widget.onOpen,
                   onMenu: widget.onMenu,
                   bottomInset: widget.bottomInset,
                 ),
@@ -122,12 +125,14 @@ class _DocumentList extends StatelessWidget {
   const _DocumentList({
     required this.documents,
     required this.layout,
+    required this.onOpen,
     required this.onMenu,
     required this.bottomInset,
   });
 
   final List<Document> documents;
   final LibraryLayout layout;
+  final void Function(Document) onOpen;
   final void Function(Document) onMenu;
   final double bottomInset;
 
@@ -137,7 +142,7 @@ class _DocumentList extends StatelessWidget {
       key: ValueKey(d.id),
       document: d,
       layout: layout,
-      onTap: () {},
+      onTap: () => onOpen(d),
       onMenu: () => onMenu(d),
     );
     final padding = EdgeInsets.fromLTRB(Spacing.xl, 0, Spacing.xl, bottomInset);

@@ -7,4 +7,5 @@ abstract final class AppRoutes {
   static String confirm(String pageId) => '/confirm/$pageId';
   static String editor(String pageId) => '/editor/$pageId';
   static String enhance(String pageId) => '/enhance/$pageId';
+  static String document(String docId) => '/document/$docId';
 }

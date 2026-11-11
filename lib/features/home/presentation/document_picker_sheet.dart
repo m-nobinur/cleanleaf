@@ -8,8 +8,10 @@ import '../../library/domain/document.dart';
 
 Future<Document?> showDocumentPicker(
   BuildContext context,
-  List<Document> documents,
-) => showShadSheet<Document>(
+  List<Document> documents, {
+  required String title,
+  required String description,
+}) => showShadSheet<Document>(
   context: context,
   side: ShadSheetSide.bottom,
   builder: (context) {
@@ -17,8 +19,8 @@ Future<Document?> showDocumentPicker(
     return ShadSheet(
       radius: const BorderRadius.vertical(top: Radius.circular(Radii.lg)),
       removeBorderRadiusWhenTiny: false,
-      title: const Text('Export PDF'),
-      description: const Text('Pick a document to share.'),
+      title: Text(title),
+      description: Text(description),
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(context).height * 0.5,

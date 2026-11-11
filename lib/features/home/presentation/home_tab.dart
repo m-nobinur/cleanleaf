@@ -18,8 +18,9 @@ class HomeTab extends StatefulWidget {
     required this.onSettings,
     required this.onScan,
     required this.onImport,
-    required this.onExport,
-    required this.onOpenFiles,
+    required this.onEdit,
+    required this.onConvert,
+    required this.onOpen,
     required this.onMenu,
   });
 
@@ -31,9 +32,10 @@ class HomeTab extends StatefulWidget {
   final VoidCallback onScan;
   final VoidCallback onImport;
 
-  /// Null when there is nothing to export.
-  final VoidCallback? onExport;
-  final VoidCallback onOpenFiles;
+  /// Edit and Convert are null when there are no documents.
+  final VoidCallback? onEdit;
+  final VoidCallback? onConvert;
+  final void Function(Document) onOpen;
   final void Function(Document) onMenu;
 
   @override
@@ -49,7 +51,6 @@ class _HomeTabState extends State<HomeTab> {
     final theme = ShadTheme.of(context);
     final colors = theme.colorScheme;
     final documents = widget.documents ?? const <Document>[];
-    final count = documents.length;
     final query = _query.trim().toLowerCase();
     final shown = query.isEmpty
         ? documents.take(_recentCount).toList()
@@ -116,22 +117,24 @@ class _HomeTabState extends State<HomeTab> {
                 onTap: widget.onImport,
               ),
               BentoTile(
-                key: const ValueKey('tile-export'),
+                key: const ValueKey('tile-edit'),
                 tone: TileTone.ember,
-                icon: LucideIcons.share2,
-                title: 'Export',
-                caption: widget.onExport == null
+                icon: LucideIcons.crop,
+                title: 'Edit',
+                caption: widget.onEdit == null
                     ? 'Scan something first'
-                    : 'PDF and share',
-                onTap: widget.onExport,
+                    : 'Crop, filters, rotate',
+                onTap: widget.onEdit,
               ),
               BentoTile(
-                key: const ValueKey('tile-files'),
+                key: const ValueKey('tile-convert'),
                 tone: TileTone.ink,
-                icon: LucideIcons.folder,
-                title: 'Files',
-                caption: '$count ${count == 1 ? 'document' : 'documents'}',
-                onTap: widget.onOpenFiles,
+                icon: LucideIcons.fileOutput,
+                title: 'Convert',
+                caption: widget.onConvert == null
+                    ? 'Scan something first'
+                    : 'PDF, JPG',
+                onTap: widget.onConvert,
               ),
             ],
           ),
@@ -201,7 +204,7 @@ class _HomeTabState extends State<HomeTab> {
                   key: ValueKey(shown[i].id),
                   document: shown[i],
                   layout: LibraryLayout.grid,
-                  onTap: () {},
+                  onTap: () => widget.onOpen(shown[i]),
                   onMenu: () => widget.onMenu(shown[i]),
                 ),
               ),
