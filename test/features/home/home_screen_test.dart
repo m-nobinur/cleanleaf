@@ -5,6 +5,7 @@ import 'package:cleanleaf/features/export/data/export_providers.dart';
 import 'package:cleanleaf/features/home/presentation/home_screen.dart';
 import 'package:cleanleaf/features/library/data/library_providers.dart';
 import 'package:cleanleaf/features/library/presentation/document_card.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +21,7 @@ void main() {
   Future<void> pumpHome(
     WidgetTester tester, [
     FakeDocumentRepository? repo,
+    MemorySettingsStore? settings,
   ]) async {
     tester.view.physicalSize = const Size(400, 1300);
     tester.view.devicePixelRatio = 1;
@@ -47,7 +49,9 @@ void main() {
               'b': [fakePage('p3', 'b', 0)],
             }),
           ),
-          settingsStoreProvider.overrideWithValue(MemorySettingsStore()),
+          settingsStoreProvider.overrideWithValue(
+            settings ?? MemorySettingsStore(),
+          ),
           shareDocumentPdfProvider.overrideWithValue(
             (id, {onProgress}) async => shared.add(id),
           ),
@@ -153,6 +157,32 @@ void main() {
       await tester.pumpAndSettle();
       await tapAndSettle(tester, find.byKey(const ValueKey('quick-scan')));
       expect(find.text('capture:idCard'), findsOneWidget);
+    });
+
+    testWidgets('quick scan uses the persisted last mode', (tester) async {
+      final settings = MemorySettingsStore();
+      await settings.write('lastScanMode', 'receipt');
+      await pumpHome(tester, null, settings);
+      await tapAndSettle(tester, find.byKey(const ValueKey('quick-scan')));
+      expect(find.text('capture:receipt'), findsOneWidget);
+    });
+
+    testWidgets('icon buttons expose tap actions to TalkBack', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpHome(tester);
+      SemanticsData data(String label) =>
+          tester.getSemantics(find.bySemanticsLabel(label)).getSemanticsData();
+      for (final label in ['Settings', 'About Cleanleaf', 'Files', 'Home']) {
+        expect(
+          data(label).hasAction(SemanticsAction.tap),
+          isTrue,
+          reason: label,
+        );
+      }
+      final fab = data('Scan document');
+      expect(fab.hasAction(SemanticsAction.tap), isTrue);
+      expect(fab.hasAction(SemanticsAction.longPress), isTrue);
+      handle.dispose();
     });
 
     testWidgets('book is disabled and close dismisses the sheet', (

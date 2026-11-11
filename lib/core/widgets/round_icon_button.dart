@@ -23,6 +23,7 @@ class RoundIconButton extends StatelessWidget {
       label: label,
       button: true,
       excludeSemantics: true,
+      onTap: onPressed,
       child: ShadIconButton(
         width: 48,
         height: 48,

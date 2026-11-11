@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/radii.dart';
 import '../../../core/theme/spacing.dart';
 import '../../capture/domain/scan_mode.dart';
 import '../../capture/presentation/scan_mode_sheet.dart';
@@ -35,7 +36,7 @@ class FloatingNav extends StatelessWidget {
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             color: colors.nav,
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(Radii.full),
             // The ink pill needs an edge only against the dark background.
             border: theme.brightness == Brightness.dark
                 ? Border.all(color: colors.hairline)
@@ -65,6 +66,7 @@ class FloatingNav extends StatelessWidget {
           hint: 'Long press to choose a scan mode',
           button: true,
           excludeSemantics: true,
+          onTap: onQuickScan,
           onLongPress: onChooseMode,
           child: ShadIconButton(
             key: const ValueKey('quick-scan'),
@@ -109,6 +111,7 @@ class _Segment extends StatelessWidget {
       button: true,
       selected: selected,
       excludeSemantics: true,
+      onTap: onTap,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
@@ -119,7 +122,7 @@ class _Segment extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: Spacing.lg + 2),
           decoration: BoxDecoration(
             color: selected ? colors.navSelected : colors.nav,
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(Radii.full),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

@@ -67,6 +67,7 @@ class DocumentCard extends ConsumerWidget {
           label: 'More actions for ${document.title}',
           button: true,
           excludeSemantics: true,
+          onTap: onMenu,
           child: ShadIconButton.ghost(
             width: 40,
             height: 40,

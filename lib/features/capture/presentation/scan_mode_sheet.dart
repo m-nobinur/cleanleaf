@@ -129,6 +129,7 @@ class ScanModeSheet extends StatelessWidget {
               label: 'Close',
               button: true,
               excludeSemantics: true,
+              onTap: () => Navigator.of(context).pop(),
               child: ShadIconButton(
                 width: 56,
                 height: 56,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/radii.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/widgets/bento_tile.dart';
 import '../../../core/widgets/round_icon_button.dart';
@@ -149,11 +150,11 @@ class _HomeTabState extends State<HomeTab> {
             decoration: ShadDecoration(
               border: ShadBorder.all(
                 color: colors.hairline,
-                radius: BorderRadius.circular(999),
+                radius: BorderRadius.circular(Radii.full),
               ),
               focusedBorder: ShadBorder.all(
                 color: colors.ring,
-                radius: BorderRadius.circular(999),
+                radius: BorderRadius.circular(Radii.full),
               ),
             ),
             padding: const EdgeInsets.symmetric(
