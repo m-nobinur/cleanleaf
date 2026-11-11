@@ -4,6 +4,7 @@ import 'dart:ui' show Tristate;
 
 import 'package:cleanleaf/core/geometry/quad.dart';
 import 'package:cleanleaf/core/theme/app_theme.dart';
+import 'package:cleanleaf/features/editor/presentation/crop_canvas.dart';
 import 'package:cleanleaf/features/editor/presentation/editor_providers.dart';
 import 'package:cleanleaf/features/editor/presentation/editor_screen.dart';
 import 'package:cleanleaf/features/library/data/library_providers.dart';
@@ -316,6 +317,49 @@ void main() {
     expect(repo.saved!.rotation, 90);
     expect(repo.saved!.corners.topLeft.x, closeTo(0.2 + 40 / size.width, 1e-6));
     expect(repo.saved!.corners.topLeft.y, closeTo(0.2, 1e-6));
+  });
+
+  testWidgets('opens zoomed to the page; double-tap shows the whole photo', (
+    tester,
+  ) async {
+    await pumpEditor(tester);
+    final stage = tester.getSize(find.byType(CropCanvas));
+    final page = imageSize(tester);
+    expect(page.width, greaterThan(stage.width), reason: 'zoomed in');
+
+    await tester.tap(find.byType(CropCanvas));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byType(CropCanvas));
+    await tester.pumpAndSettle();
+
+    expect(imageSize(tester).width, lessThan(stage.width));
+  });
+
+  testWidgets('a full-frame crop opens on the whole photo', (tester) async {
+    await pumpEditor(tester, corners: fullFrame);
+    expect(
+      imageSize(tester).width,
+      lessThan(tester.getSize(find.byType(CropCanvas)).width),
+    );
+  });
+
+  testWidgets('pinching zooms the photo', (tester) async {
+    await pumpEditor(tester, corners: fullFrame);
+    final before = imageSize(tester).width;
+    final center = tester.getCenter(find.byType(CropCanvas));
+    // Diagonal, clear of the edge-midpoint handles.
+    final a = await tester.startGesture(center - const Offset(50, 40));
+    final b = await tester.startGesture(center + const Offset(50, 40));
+    await tester.pump();
+    for (var i = 0; i < 4; i++) {
+      await a.moveBy(const Offset(-25, -20));
+      await b.moveBy(const Offset(25, 20));
+      await tester.pump();
+    }
+    await a.up();
+    await b.up();
+    await tester.pumpAndSettle();
+    expect(imageSize(tester).width, greaterThan(before * 1.2));
   });
 
   testWidgets('handles have 48 dp touch targets', (tester) async {

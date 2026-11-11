@@ -126,6 +126,8 @@ class _EditorState extends ConsumerState<_Editor> {
   late final _cropTarget = ValueNotifier(_targetFor(widget.page.corners));
   late int _rotation = widget.page.rotation;
   final _history = <_Snapshot>[];
+  // Bumped when the crop jumps (toggle, undo, rotate) so the view refits.
+  var _refits = 0;
   bool _saving = false;
 
   @override
@@ -159,17 +161,24 @@ class _EditorState extends ConsumerState<_Editor> {
   void _undo() {
     final last = _history.removeLast();
     _quad.value = last.quad;
-    setState(() => _rotation = last.rotation);
+    setState(() {
+      _rotation = last.rotation;
+      _refits++;
+    });
   }
 
   void _toggleCrop(Quad target) {
     _remember();
     _quad.value = target;
+    setState(() => _refits++);
   }
 
   void _rotate() {
     _remember();
-    setState(() => _rotation = (_rotation + 90) % 360);
+    setState(() {
+      _rotation = (_rotation + 90) % 360;
+      _refits++;
+    });
   }
 
   Future<void> _continue() async {
@@ -209,6 +218,7 @@ class _EditorState extends ConsumerState<_Editor> {
               ),
             ),
             child: CropCanvas(
+              key: ValueKey(_refits),
               image: widget.image.image,
               imageSize: widget.image.size,
               quarterTurns: _rotation ~/ 90,
