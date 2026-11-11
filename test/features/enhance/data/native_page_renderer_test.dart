@@ -195,6 +195,188 @@ void main() {
     });
   });
 
+  group('adjustments', () {
+    late String plain;
+    setUpAll(() async => plain = await writeScene('adjust.jpg'));
+
+    Future<img.Image> adjusted(
+      Map<Adjustment, double> values, {
+      PageFilter filter = PageFilter.original,
+    }) async => decode(
+      await render(
+        plain,
+        sceneQuad,
+        filter,
+        params: {for (final e in values.entries) e.key.name: e.value},
+      ),
+    );
+
+    test('every adjustment at 0 is byte-identical to none', () async {
+      for (final filter in PageFilter.values) {
+        final none = await render(plain, sceneQuad, filter);
+        final zeros = await render(
+          plain,
+          sceneQuad,
+          filter,
+          params: {for (final a in Adjustment.values) a.name: 0},
+        );
+        expect(zeros, none, reason: filter.name);
+      }
+    });
+
+    test('brightness lifts and lowers the mean', () async {
+      final base = meanLuma(await adjusted({}));
+      expect(
+        meanLuma(await adjusted({Adjustment.brightness: 0.5})),
+        greaterThan(base + 5),
+      );
+      expect(
+        meanLuma(await adjusted({Adjustment.brightness: -0.5})),
+        lessThan(base - 5),
+      );
+    });
+
+    test('contrast widens and narrows the spread', () async {
+      final base = lumaSpread(await adjusted({}));
+      expect(
+        lumaSpread(await adjusted({Adjustment.contrast: 0.5})),
+        greaterThan(base * 1.2),
+      );
+      expect(
+        lumaSpread(await adjusted({Adjustment.contrast: -0.5})),
+        lessThan(base * 0.8),
+      );
+    });
+
+    test('saturation scales colour; -1 is grey', () async {
+      final base = chroma(await adjusted({}));
+      expect(base, greaterThan(3));
+      expect(
+        chroma(await adjusted({Adjustment.saturation: 1})),
+        greaterThan(base * 1.5),
+      );
+      expect(chroma(await adjusted({Adjustment.saturation: -1})), lessThan(1));
+    });
+
+    test('sharpness raises and lowers edge energy', () async {
+      final base = edgeEnergy(await adjusted({}));
+      expect(
+        edgeEnergy(await adjusted({Adjustment.sharpness: 0.5})),
+        greaterThan(base * 1.2),
+      );
+      expect(
+        edgeEnergy(await adjusted({Adjustment.sharpness: -0.5})),
+        lessThan(base * 0.9),
+      );
+    });
+
+    test(
+      'B&W ignores tone and sharpness; Grayscale ignores saturation',
+      () async {
+        final bw = await render(plain, sceneQuad, PageFilter.blackWhite);
+        final bwAdjusted = await render(
+          plain,
+          sceneQuad,
+          PageFilter.blackWhite,
+          params: {
+            Adjustment.brightness.name: 0.5,
+            Adjustment.contrast.name: -0.5,
+            Adjustment.saturation.name: 1,
+            Adjustment.sharpness.name: -1,
+          },
+        );
+        expect(bwAdjusted, bw);
+        final gray = await render(plain, sceneQuad, PageFilter.grayscale);
+        final graySaturated = await render(
+          plain,
+          sceneQuad,
+          PageFilter.grayscale,
+          params: {Adjustment.saturation.name: 1},
+        );
+        expect(graySaturated, gray);
+      },
+    );
+
+    // A white 800x600 page with a dark dot right of centre, flattened as is.
+    const dot = (x: 0.7, y: 0.5);
+    late String dotted;
+    setUpAll(() {
+      final page = img.Image(width: 800, height: 600)
+        ..clear(img.ColorRgb8(240, 240, 240));
+      img.fillCircle(
+        page,
+        x: 560,
+        y: 300,
+        radius: 20,
+        color: img.ColorRgb8(20, 20, 20),
+      );
+      dotted = '${temp.path}/dot.jpg';
+      File(dotted).writeAsBytesSync(img.encodeJpg(page, quality: 95));
+    });
+
+    for (final (rotation, degrees) in [
+      (0, 20.0),
+      (0, -20.0),
+      (0, 45.0),
+      (90, 20.0),
+    ]) {
+      test('straighten $degrees after rotation $rotation turns clockwise '
+          'about the centre, zoomed, at the same size', () async {
+        final out = decode(
+          await render(
+            dotted,
+            fullFrame,
+            PageFilter.original,
+            rotation: rotation,
+            params: {Adjustment.straighten.name: degrees},
+          ),
+        );
+        final turned = rotate(dot, rotation);
+        expectSize(out, rotation == 0 ? (800, 600) : (600, 800));
+        final at = straightened(turned, degrees, out.width, out.height);
+        expect(meanLumaAt(out, at, radius: 4), lessThan(80));
+        expect(meanLumaAt(out, turned, radius: 4), greaterThan(200));
+      });
+    }
+
+    test('out-of-range or NaN adjustments throw', () async {
+      for (final params in [
+        {Adjustment.brightness.name: 1.5},
+        {Adjustment.sharpness.name: -2.0},
+        {Adjustment.straighten.name: 46.0},
+        {Adjustment.contrast.name: double.nan},
+      ]) {
+        await expectLater(
+          render(plain, sceneQuad, PageFilter.original, params: params),
+          throwsA(
+            isA<RenderException>().having(
+              (e) => e.status,
+              'status',
+              ClvStatus.invalidArgument,
+            ),
+          ),
+          reason: '$params',
+        );
+      }
+    });
+
+    test('png renders a lossless PNG of the same page', () async {
+      final bytes = await renderer.render(
+        plain,
+        sceneQuad,
+        0,
+        PageFilter.enhancedColor,
+        const {},
+        png: true,
+      );
+      expect(bytes.sublist(1, 4), 'PNG'.codeUnits);
+      expectSize(
+        img.decodePng(bytes)!,
+        naturalSize(sceneQuad, sceneWidth, sceneHeight),
+      );
+    });
+  });
+
   group('detection-v0 fixtures', () {
     final source = Directory('.local/fixtures/detection-v0');
     final labelsFile = File('${source.path}/labels.json');
@@ -395,4 +577,55 @@ double unevenness(img.Image image) {
       levels.map((v) => (v - mean) * (v - mean)).reduce((a, b) => a + b) /
       levels.length;
   return math.sqrt(variance);
+}
+
+/// Where [p] lands after straightening a [width] x [height] page by
+/// [degrees] clockwise about its centre, zoomed to fill.
+Point straightened(Point p, double degrees, int width, int height) {
+  final a = degrees * math.pi / 180;
+  final c = math.cos(a).abs(), s = math.sin(a).abs();
+  final zoom = math.max(c + s * height / width, c + s * width / height);
+  final dx = (p.x - 0.5) * width, dy = (p.y - 0.5) * height;
+  return (
+    x: 0.5 + zoom * (dx * math.cos(a) - dy * math.sin(a)) / width,
+    y: 0.5 + zoom * (dx * math.sin(a) + dy * math.cos(a)) / height,
+  );
+}
+
+double meanLuma(img.Image image) {
+  var sum = 0.0;
+  for (final p in image) {
+    sum += 0.299 * p.r + 0.587 * p.g + 0.114 * p.b;
+  }
+  return sum / (image.width * image.height);
+}
+
+double lumaSpread(img.Image image) {
+  final mean = meanLuma(image);
+  var sum = 0.0;
+  for (final p in image) {
+    final d = 0.299 * p.r + 0.587 * p.g + 0.114 * p.b - mean;
+    sum += d * d;
+  }
+  return math.sqrt(sum / (image.width * image.height));
+}
+
+/// Mean red-blue difference: the synthetic page is warm grey.
+double chroma(img.Image image) {
+  var sum = 0.0;
+  for (final p in image) {
+    sum += (p.r - p.b).abs();
+  }
+  return sum / (image.width * image.height);
+}
+
+/// Mean absolute luma step between horizontal neighbours.
+double edgeEnergy(img.Image image) {
+  var sum = 0.0;
+  for (var y = 0; y < image.height; y++) {
+    for (var x = 1; x < image.width; x++) {
+      sum += (luma(image, x, y) - luma(image, x - 1, y)).abs();
+    }
+  }
+  return sum / (image.width * image.height);
 }

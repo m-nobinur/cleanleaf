@@ -32,17 +32,18 @@ class NativePageRenderer implements PageRenderer {
     PageFilter filter,
     Map<String, double> params, {
     int maxLongSide = 0,
+    bool png = false,
   }) {
     final filterIndex = filter.index;
-    final aspectRatio = params[aspectRatioParam] ?? 0;
     return Isolate.run(
       () => _render(
         File(originalPath).readAsBytesSync(),
         quad,
         rotation,
         filterIndex,
-        aspectRatio,
+        params,
         maxLongSide,
+        png,
       ),
     );
   }
@@ -59,8 +60,9 @@ Uint8List _render(
   Quad quad,
   int rotation,
   int filter,
-  double aspectRatio,
+  Map<String, double> params,
   int maxLongSide,
+  bool png,
 ) => using((arena) {
   final corners = arena<Float>(8);
   var i = 0;
@@ -68,22 +70,30 @@ Uint8List _render(
     corners[i++] = corner.x;
     corners[i++] = corner.y;
   }
-  final params = arena<ClvRenderParams>();
-  params.ref
+  double adjustment(Adjustment a) => params[a.name] ?? 0;
+  // malloc doesn't zero, so every field is set.
+  final native = arena<ClvRenderParams>();
+  native.ref
     ..filter = filter
     ..rotationDegrees = rotation
-    ..aspectRatio = aspectRatio
-    ..maxLongSide = maxLongSide;
-  return _callForJpeg(
+    ..aspectRatio = params[aspectRatioParam] ?? 0
+    ..maxLongSide = maxLongSide
+    ..brightness = adjustment(Adjustment.brightness)
+    ..contrast = adjustment(Adjustment.contrast)
+    ..saturation = adjustment(Adjustment.saturation)
+    ..sharpness = adjustment(Adjustment.sharpness)
+    ..straightenDegrees = adjustment(Adjustment.straighten)
+    ..encodePng = png ? 1 : 0;
+  return _callForImage(
     arena,
     encoded,
     (input, length, out, outLength) =>
-        clvRenderPage(input, length, corners, params, out, outLength),
+        clvRenderPage(input, length, corners, native, out, outLength),
   );
 }, malloc);
 
 Uint8List _thumbnail(Uint8List encoded, int maxSide) => using(
-  (arena) => _callForJpeg(
+  (arena) => _callForImage(
     arena,
     encoded,
     (input, length, out, outLength) =>
@@ -92,7 +102,7 @@ Uint8List _thumbnail(Uint8List encoded, int maxSide) => using(
   malloc,
 );
 
-Uint8List _callForJpeg(
+Uint8List _callForImage(
   Arena arena,
   Uint8List encoded,
   int Function(

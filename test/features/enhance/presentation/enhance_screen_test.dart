@@ -35,6 +35,7 @@ class FakeRenderer implements PageRenderer {
     PageFilter filter,
     Map<String, double> params, {
     int maxLongSide = 0,
+    bool png = false,
   }) async {
     calls.add((filter: filter, rotation: rotation, maxLongSide: maxLongSide));
     return _png;
