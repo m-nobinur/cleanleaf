@@ -6,9 +6,11 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/storage/storage_providers.dart';
+import '../../enhance/data/enhance_providers.dart';
 import '../../library/data/library_providers.dart';
 import '../domain/export_jpg.dart';
 import '../domain/export_pdf.dart';
+import '../domain/export_png.dart';
 import 'pdf_isolate_builder.dart';
 
 Future<Directory> _exportDir() async =>
@@ -30,6 +32,16 @@ final exportJpgProvider = Provider<ExportJpg>(
     pages: ref.watch(pageRepositoryProvider),
     resolve: ref.watch(fileStoreProvider).resolve,
     outputDir: _exportDir,
+  ),
+);
+
+final exportPngProvider = Provider<ExportPng>(
+  (ref) => ExportPng(
+    documents: ref.watch(documentRepositoryProvider),
+    pages: ref.watch(pageRepositoryProvider),
+    resolve: ref.watch(fileStoreProvider).resolve,
+    outputDir: _exportDir,
+    renderer: ref.watch(pageRendererProvider),
   ),
 );
 
@@ -59,6 +71,18 @@ final shareDocumentJpgProvider = Provider<Future<void> Function(String)>(
     await SharePlus.instance.share(
       ShareParams(
         files: [for (final f in files) XFile(f.path, mimeType: 'image/jpeg')],
+      ),
+    );
+  },
+);
+
+/// Renders the pages as named PNGs in the app cache, then shares them all.
+final shareDocumentPngProvider = Provider<Future<void> Function(String)>(
+  (ref) => (documentId) async {
+    final files = await ref.read(exportPngProvider)(documentId);
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [for (final f in files) XFile(f.path, mimeType: 'image/png')],
       ),
     );
   },

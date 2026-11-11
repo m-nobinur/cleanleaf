@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
+import 'core/geometry/quad.dart';
 import 'core/router/app_routes.dart';
 import 'core/storage/storage_providers.dart';
 import 'core/theme/app_theme.dart';
@@ -20,7 +21,22 @@ import 'main_render_bench.dart';
 // `adb logcat -s flutter:I`) and opens the enhance screen on it.
 // `--dart-define=SEED_IMAGE=<path readable on the device>` uses a real photo;
 // without it, or if it can't be read, a synthetic shadowed page is generated.
+// `--dart-define=SEED_QUAD=x,y,x,y,x,y,x,y` (TL, TR, BR, BL, normalized) crops
+// the real photo; CLSEED adjust lines time the Adjust panel's renders.
 const _seedImage = String.fromEnvironment('SEED_IMAGE');
+const _seedQuad = String.fromEnvironment('SEED_QUAD');
+
+Quad? _parseQuad(String text) {
+  if (text.isEmpty) return null;
+  final v = text.split(',').map(double.parse).toList();
+  if (v.length != 8) return null;
+  return (
+    topLeft: (x: v[0], y: v[1]),
+    topRight: (x: v[2], y: v[3]),
+    bottomRight: (x: v[4], y: v[5]),
+    bottomLeft: (x: v[6], y: v[7]),
+  );
+}
 
 const _demoQuad = (
   topLeft: (x: 0.17, y: 0.18),
@@ -76,6 +92,62 @@ Future<void> _logTimings(ProviderContainer container, DocumentPage page) async {
   for (final f in PageFilter.values) {
     await timed('switch ${f.name}', f, 1600);
   }
+  await _logAdjustTimings(renderer, 'page', path, page.corners);
+  // Camera-sized input for the latency budget; timed only, never shown.
+  final synthetic = File('${Directory.systemTemp.path}/adjust_12mp.jpg')
+    ..writeAsBytesSync(
+      await renderer.thumbnail(
+        syntheticPageBmp(4080, 3072, quad: _demoQuad, shadow: 0.55),
+        maxSide: 4080,
+      ),
+    );
+  await _logAdjustTimings(renderer, '12mp', synthetic.path, _demoQuad);
+}
+
+// Slider-to-preview latency is the 40 ms debounce plus one 800 px render;
+// release shows the 1600 px render.
+Future<void> _logAdjustTimings(
+  PageRenderer renderer,
+  String label,
+  String path,
+  Quad quad,
+) async {
+  const tone = {'brightness': 0.3, 'contrast': 0.2, 'sharpness': 0.4};
+  Future<void> timed(
+    String name,
+    Map<String, double> params,
+    int side, {
+    bool png = false,
+    int runs = 5,
+  }) async {
+    final times = <int>[];
+    var bytes = 0;
+    for (var i = 0; i < runs; i++) {
+      final watch = Stopwatch()..start();
+      final out = await renderer.render(
+        path,
+        quad,
+        0,
+        PageFilter.enhancedColor,
+        params,
+        maxLongSide: side,
+        png: png,
+      );
+      times.add(watch.elapsedMilliseconds);
+      bytes = out.length;
+    }
+    times.sort();
+    debugPrint(
+      'CLSEED adjust $label $name median=${times[times.length ~/ 2]} '
+      'max=${times.last} ms out=$bytes B',
+    );
+  }
+
+  await timed('drag 800 tone', tone, 800);
+  await timed('drag 800 straighten', {...tone, 'straighten': 7.5}, 800);
+  await timed('release 1600', {...tone, 'straighten': 7.5}, 1600);
+  await timed('full jpeg', tone, 0, runs: 2);
+  await timed('full png', tone, 0, png: true, runs: 2);
 }
 
 Future<void> main() async {
@@ -90,7 +162,7 @@ Future<void> main() async {
       .add(
         document.id,
         original: Stream.value(original.bytes),
-        detectedCorners: original.synthetic ? _demoQuad : null,
+        detectedCorners: original.synthetic ? _demoQuad : _parseQuad(_seedQuad),
       );
   try {
     await _logTimings(container, page);
