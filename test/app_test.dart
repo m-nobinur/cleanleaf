@@ -1,14 +1,17 @@
 import 'package:cleanleaf/app.dart';
-import 'package:cleanleaf/core/storage/settings_store.dart';
 import 'package:cleanleaf/core/storage/storage_providers.dart';
 import 'package:cleanleaf/features/library/data/library_providers.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'features/library/presentation/fakes.dart';
 
 void main() {
-  testWidgets('opens on library and navigates to capture', (tester) async {
+  testWidgets('opens on home and navigates to capture', (tester) async {
+    tester.view.physicalSize = const Size(400, 1300);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -16,26 +19,16 @@ void main() {
             FakeDocumentRepository(),
           ),
           pageRepositoryProvider.overrideWithValue(FakePageRepository()),
-          settingsStoreProvider.overrideWithValue(_MemorySettingsStore()),
+          settingsStoreProvider.overrideWithValue(MemorySettingsStore()),
         ],
         child: const CleanleafApp(),
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Library'), findsOneWidget);
+    expect(find.text('Scan, clean,\nshare.'), findsOneWidget);
 
-    await tester.tap(find.text('Scan'));
+    await tester.tap(find.byKey(const ValueKey('quick-scan')));
     await tester.pumpAndSettle();
     expect(find.text('Capture'), findsOneWidget);
   });
-}
-
-class _MemorySettingsStore implements SettingsStore {
-  final _values = <String, String>{};
-
-  @override
-  Future<String?> read(String key) async => _values[key];
-
-  @override
-  Future<void> write(String key, String value) async => _values[key] = value;
 }

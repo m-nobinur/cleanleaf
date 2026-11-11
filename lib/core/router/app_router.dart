@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/capture/presentation/capture_screen.dart';
 import '../../features/editor/presentation/editor_screen.dart';
 import '../../features/enhance/presentation/enhance_screen.dart';
-import '../../features/library/presentation/library_screen.dart';
+import '../../features/home/presentation/home_screen.dart';
 import 'app_routes.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -12,7 +12,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: AppRoutes.library,
-        builder: (context, state) => const LibraryScreen(),
+        builder: (context, state) => const HomeScreen(),
       ),
       GoRoute(
         path: AppRoutes.capture,
