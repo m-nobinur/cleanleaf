@@ -108,6 +108,7 @@ class _FormatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
+    final colors = theme.colorScheme;
     return ShadButton.ghost(
       key: ValueKey(format),
       width: double.infinity,
@@ -122,14 +123,22 @@ class _FormatTile extends StatelessWidget {
       onPressed: () => Navigator.of(context).pop(format),
       child: Row(
         children: [
-          Icon(icon, size: 20),
+          Icon(icon, size: 20, color: colors.foreground),
           const SizedBox(width: Spacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: theme.textTheme.p),
-                Text(caption, style: theme.textTheme.muted),
+                Text(
+                  label,
+                  style: theme.textTheme.p.copyWith(color: colors.foreground),
+                ),
+                Text(
+                  caption,
+                  style: theme.textTheme.muted.copyWith(
+                    color: colors.mutedForeground,
+                  ),
+                ),
               ],
             ),
           ),

@@ -93,6 +93,14 @@ class _DocumentScreenState extends ConsumerState<DocumentScreen> {
                 color: colors.mutedForeground,
               ),
             ),
+            if (count > 1)
+              Padding(
+                padding: const EdgeInsets.only(top: Spacing.sm),
+                child: Text(
+                  'Tap a page to choose which one Edit opens.',
+                  style: theme.textTheme.muted,
+                ),
+              ),
           ],
         ],
       ),
