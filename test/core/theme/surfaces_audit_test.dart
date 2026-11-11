@@ -1,11 +1,18 @@
 // T-036 audit: every non-camera surface in both themes at phone size, with
 // real fonts, checked for overflow, AA text contrast, 48 dp targets and
 // TalkBack labels. Set AUDIT_SHOTS_DIR to also write a PNG per surface.
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' show ImageByteFormat;
 
 import 'package:cleanleaf/core/storage/storage_providers.dart';
 import 'package:cleanleaf/core/theme/app_theme.dart';
+import 'package:cleanleaf/features/capture/data/capture_providers.dart';
+import 'package:cleanleaf/features/capture/domain/document_camera.dart';
+import 'package:cleanleaf/features/capture/domain/scan_mode.dart';
+import 'package:cleanleaf/features/capture/presentation/capture_screen.dart';
+import 'package:cleanleaf/features/capture/presentation/code_result_sheet.dart';
 import 'package:cleanleaf/features/document/presentation/document_screen.dart';
 import 'package:cleanleaf/features/export/data/export_providers.dart';
 import 'package:cleanleaf/features/home/presentation/home_screen.dart';
@@ -19,12 +26,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
+import '../../features/capture/presentation/fake_camera.dart';
 import '../../features/library/presentation/fakes.dart';
 
 final _shotsDir = Platform.environment['AUDIT_SHOTS_DIR'];
 
+// Package roots come from the resolved package config, so version bumps and
+// other machines keep working.
+String _packageRoot(String name) {
+  final config = jsonDecode(
+    File('.dart_tool/package_config.json').readAsStringSync(),
+  ) as Map<String, dynamic>;
+  final package = (config['packages'] as List)
+      .cast<Map<String, dynamic>>()
+      .firstWhere((p) => p['name'] == name);
+  return Uri.parse('${File('.dart_tool/package_config.json').absolute.uri}')
+      .resolve(package['rootUri'] as String)
+      .toFilePath();
+}
+
 Future<void> _loadFonts() async {
-  final pubCache = '${Platform.environment['HOME']}/.pub-cache/hosted/pub.dev';
   Future<void> load(String family, List<String> paths) async {
     final loader = FontLoader(family);
     for (final path in paths) {
@@ -34,7 +55,7 @@ Future<void> _loadFonts() async {
     await loader.load();
   }
 
-  final geist = '$pubCache/shadcn_ui-0.59.0/fonts/Geist[wght].ttf';
+  final geist = '${_packageRoot('shadcn_ui')}/fonts/Geist[wght].ttf';
   await load('packages/shadcn_ui/Geist', [geist]);
   await load('Geist', [geist]);
   await load('JetBrainsMono', [
@@ -42,7 +63,7 @@ Future<void> _loadFonts() async {
       'assets/fonts/JetBrainsMonoNL-$w.ttf',
   ]);
   await load('packages/lucide_icons_flutter/Lucide', [
-    '$pubCache/lucide_icons_flutter-3.1.25/assets/lucide.ttf',
+    '${_packageRoot('lucide_icons_flutter')}/assets/lucide.ttf',
   ]);
 }
 
@@ -204,6 +225,55 @@ void main() {
         FocusManager.instance.primaryFocus?.unfocus();
         await tester.pumpAndSettle();
         await audit(tester, '${mode}_rename_dialog');
+      });
+
+      testWidgets('rename dialog with the keyboard up', (tester) async {
+        await pumpApp(tester, theme, initial: '/document/a');
+        tester.view.viewInsets = const FakeViewPadding(bottom: 600);
+        await tap(tester, find.bySemanticsLabel('Rename'));
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pumpAndSettle();
+        await audit(tester, '${mode}_rename_keyboard');
+        final keyboardTop = 780 - 600 / tester.view.devicePixelRatio;
+        expect(
+          tester.getBottomLeft(find.text('Cancel')).dy,
+          lessThanOrEqualTo(keyboardTop),
+        );
+      });
+
+      testWidgets('code result sheet', (tester) async {
+        await pumpApp(tester, theme);
+        final context = tester.element(find.byType(HomeScreen));
+        unawaited(
+          showCodeResult(context, (
+            format: 'QR Code',
+            text: 'https://example.org/menu?table=12',
+          ), openLink: (_) async => true),
+        );
+        await tester.pumpAndSettle();
+        await audit(tester, '${mode}_code_result');
+      });
+
+      testWidgets('camera permission notice', (tester) async {
+        tester.view.physicalSize = const Size(720, 1560);
+        tester.view.devicePixelRatio = 2;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              documentCameraProvider.overrideWithValue(
+                FakeCamera()..permission = CameraPermission.permanentlyDenied,
+              ),
+              settingsStoreProvider.overrideWithValue(MemorySettingsStore()),
+            ],
+            child: ShadApp(
+              theme: theme,
+              home: const CaptureScreen(mode: ScanMode.document),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await audit(tester, '${mode}_camera_permission');
       });
 
       testWidgets('missing document', (tester) async {

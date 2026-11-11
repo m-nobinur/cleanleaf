@@ -11,14 +11,32 @@ const _rowPadding = Spacing.lg;
 
 /// A card of [ListRow]s separated by inset hairlines, for sheets and menus.
 class ListGroup extends StatelessWidget {
-  const ListGroup({super.key, required this.children});
+  ListGroup({super.key, required List<Widget> children})
+    : itemCount = children.length,
+      itemBuilder = ((_, i) => children[i]),
+      _lazy = false;
 
-  final List<Widget> children;
+  /// Builds rows on demand and scrolls within its parent's height limit.
+  const ListGroup.builder({
+    super.key,
+    required this.itemCount,
+    required this.itemBuilder,
+  }) : _lazy = true;
+
+  final int itemCount;
+  final IndexedWidgetBuilder itemBuilder;
+  final bool _lazy;
 
   @override
   Widget build(BuildContext context) {
     final colors = ShadTheme.of(context).colorScheme;
     final radius = BorderRadius.circular(Radii.md);
+    final divider = Padding(
+      padding: const EdgeInsets.only(
+        left: _rowPadding + _badgeSize + Spacing.md,
+      ),
+      child: SizedBox(height: 1, child: ColoredBox(color: colors.hairline)),
+    );
     return DecoratedBox(
       decoration: BoxDecoration(
         color: colors.card,
@@ -27,25 +45,24 @@ class ListGroup extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: radius,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var i = 0; i < children.length; i++) ...[
-              if (i > 0)
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: _rowPadding + _badgeSize + Spacing.md,
-                  ),
-                  child: SizedBox(
-                    height: 1,
-                    child: ColoredBox(color: colors.hairline),
-                  ),
-                ),
-              children[i],
-            ],
-          ],
-        ),
+        child: _lazy
+            ? ListView.separated(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: itemCount,
+                separatorBuilder: (_, _) => divider,
+                itemBuilder: itemBuilder,
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < itemCount; i++) ...[
+                    if (i > 0) divider,
+                    itemBuilder(context, i),
+                  ],
+                ],
+              ),
       ),
     );
   }

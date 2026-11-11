@@ -26,17 +26,15 @@ Future<Document?> showDocumentPicker(
       constraints: BoxConstraints(
         maxHeight: MediaQuery.sizeOf(context).height * 0.55,
       ),
-      child: SingleChildScrollView(
+      child: Padding(
         padding: const EdgeInsets.only(top: Spacing.lg),
-        child: ListGroup(
-          children: [
-            for (final document in documents)
-              _DocumentRow(
-                key: ValueKey(document.id),
-                document: document,
-                onTap: () => Navigator.of(context).pop(document),
-              ),
-          ],
+        child: ListGroup.builder(
+          itemCount: documents.length,
+          itemBuilder: (context, i) => _DocumentRow(
+            key: ValueKey(documents[i].id),
+            document: documents[i],
+            onTap: () => Navigator.of(context).pop(documents[i]),
+          ),
         ),
       ),
     ),
