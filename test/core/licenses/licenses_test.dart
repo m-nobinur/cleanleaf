@@ -77,6 +77,10 @@ void main() {
     );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
+    expect(
+      tester.getTopLeft(find.byIcon(LucideIcons.info)).dx,
+      tester.getTopLeft(find.byIcon(LucideIcons.lock)).dx,
+    );
     await tester.tap(find.text('About & licenses'));
     await tester.pumpAndSettle();
     expect(find.text('Version $appVersion'), findsOneWidget);

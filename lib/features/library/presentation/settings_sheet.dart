@@ -92,6 +92,8 @@ class _SettingsTile extends StatelessWidget {
     return ShadButton.ghost(
       width: double.infinity,
       height: 56,
+      padding: EdgeInsets.zero,
+      mainAxisAlignment: MainAxisAlignment.start,
       onPressed: () => onTap(context),
       child: content,
     );

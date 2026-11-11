@@ -9,7 +9,8 @@ class ThirdPartyNotice {
   final List<String> assets;
 }
 
-/// Add a notice here: drop its text in assets/licenses/ and list it. See T-014 for the checklist.
+/// Add a notice here: drop its text in assets/licenses/ and list it (checklist in T-014).
+/// OpenCV's SDK libraries are listed even where the linker may drop them, to keep the set complete.
 const thirdPartyNotices = <ThirdPartyNotice>[
   ThirdPartyNotice(
     packages: ['OpenCV 4.13.0'],
@@ -27,8 +28,28 @@ const thirdPartyNotices = <ThirdPartyNotice>[
     assets: ['assets/licenses/libpng-LICENSE'],
   ),
   ThirdPartyNotice(
-    packages: ['zlib'],
-    assets: ['assets/licenses/zlib-LICENSE'],
+    packages: ['libtiff'],
+    assets: ['assets/licenses/libtiff-LICENSE.md'],
+  ),
+  ThirdPartyNotice(
+    packages: ['libwebp'],
+    assets: ['assets/licenses/libwebp-COPYING.txt'],
+  ),
+  ThirdPartyNotice(
+    packages: ['OpenJPEG'],
+    assets: ['assets/licenses/libopenjp2-LICENSE'],
+  ),
+  ThirdPartyNotice(
+    packages: ['OpenEXR'],
+    assets: ['assets/licenses/openexr-LICENSE'],
+  ),
+  ThirdPartyNotice(
+    packages: ['oneTBB'],
+    assets: ['assets/licenses/tbb-LICENSE.txt'],
+  ),
+  ThirdPartyNotice(
+    packages: ['Intel ITT notify (BSD-3-Clause)'],
+    assets: ['assets/licenses/ittnotify-BSD-3-Clause.txt'],
   ),
   ThirdPartyNotice(
     packages: ['cpufeatures (Android)'],
