@@ -139,21 +139,42 @@ class _ModePillsState extends State<ModePills> {
   }
 
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    padding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
-    child: Row(
-      children: [
-        for (final m in ScanMode.values)
-          _ModePill(
-            key: _keys[m],
-            mode: m,
-            selected: m == widget.mode,
-            onTap: m.isAvailable ? () => widget.onChanged(m) : null,
-          ),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) {
+    // Only the mask's alpha matters; the colour is any opaque token.
+    final opaque = ShadTheme.of(context).colorScheme.foreground;
+    return ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (rect) {
+        final fade = _fade / rect.width;
+        return LinearGradient(
+          colors: [
+            opaque.withValues(alpha: 0),
+            opaque,
+            opaque,
+            opaque.withValues(alpha: 0),
+          ],
+          stops: [0, fade, 1 - fade, 1],
+        ).createShader(rect);
+      },
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: _fade),
+        child: Row(
+          children: [
+            for (final m in ScanMode.values)
+              _ModePill(
+                key: _keys[m],
+                mode: m,
+                selected: m == widget.mode,
+                onTap: m.isAvailable ? () => widget.onChanged(m) : null,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static const _fade = Spacing.xl;
 }
 
 class _ModePill extends StatelessWidget {
@@ -173,70 +194,87 @@ class _ModePill extends StatelessWidget {
     final theme = ShadTheme.of(context);
     final colors = theme.colorScheme;
     final label = theme.textTheme.monoLabel;
+    final soon = onTap == null;
     return Semantics(
-      label: onTap == null
-          ? '${mode.label} mode, coming soon'
-          : '${mode.label} mode',
+      label: soon ? '${mode.label} mode, coming soon' : '${mode.label} mode',
       button: true,
       selected: selected,
-      enabled: onTap != null,
+      enabled: !soon,
       excludeSemantics: true,
       onTap: onTap,
       // The pill is 40 dp; the padding brings each target to 48 dp.
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Spacing.xs / 2,
-            vertical: Spacing.xs,
-          ),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            height: 40,
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
-            decoration: BoxDecoration(
-              color: selected ? colors.navSelected : colors.nav,
-              borderRadius: BorderRadius.circular(Radii.full),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Spacing.xs / 2,
+                vertical: Spacing.xs,
+              ),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                height: 40,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+                decoration: BoxDecoration(
+                  color: selected ? colors.navSelected : colors.nav,
+                  borderRadius: BorderRadius.circular(Radii.full),
+                ),
+                child: Text(
                   mode.label.toUpperCase(),
                   style: label.copyWith(
                     color: selected
                         ? colors.onNavSelected
-                        : onTap == null
+                        : soon
                         ? colors.onNav.withValues(alpha: 0.5)
                         : colors.onNav,
                   ),
                 ),
-                if (onTap == null) ...[
-                  const SizedBox(width: Spacing.xs),
-                  Text('SOON', style: label.copyWith(color: colors.highlight)),
-                ],
-              ],
+              ),
             ),
-          ),
+            if (soon)
+              Positioned(
+                top: 0,
+                right: Spacing.xs,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: Spacing.xs),
+                  decoration: BoxDecoration(
+                    color: colors.highlight,
+                    borderRadius: BorderRadius.circular(Radii.full),
+                  ),
+                  child: Text(
+                    'SOON',
+                    style: label.copyWith(
+                      fontSize: 9,
+                      color: colors.primaryForeground,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
   }
 }
 
-/// The auto-capture chip: a leaf ring with an ember dot when on, outlined and
-/// muted when off. A toggle ticks and briefly reads "Auto: on" or "Auto: off".
+/// The auto-capture chip, in the mode pills' shape: solid leaf with an ember
+/// dot when on (pulsing while a shot arms), graphite with a hollow ring when
+/// off. A toggle ticks and briefly reads "Auto: on" or "Auto: off".
 class AutoCaptureToggle extends StatefulWidget {
   const AutoCaptureToggle({
     super.key,
     required this.enabled,
     required this.onChanged,
+    this.arming = false,
   });
 
   final bool enabled;
+  final bool arming;
   final ValueChanged<bool> onChanged;
 
   @override
@@ -267,64 +305,59 @@ class _AutoCaptureToggleState extends State<AutoCaptureToggle> {
     final colors = theme.colorScheme;
     final on = widget.enabled;
     final text = _announce == null ? 'AUTO' : (on ? 'AUTO: ON' : 'AUTO: OFF');
+    final ink = on ? colors.primaryForeground : colors.onNav;
+    Widget dot = Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: on ? colors.highlight : null,
+        border: on ? null : Border.all(color: ink, width: 1.5),
+      ),
+    );
+    if (on && widget.arming) {
+      dot = dot
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .fade(begin: 1, end: 0.3, duration: 600.ms)
+          .scaleXY(begin: 1, end: 0.75, duration: 600.ms);
+    }
     return Semantics(
       label: 'Auto-capture',
       toggled: on,
       button: true,
       excludeSemantics: true,
       onTap: _toggle,
+      // The pill is 40 dp, like the mode pills; the padding makes 48 dp.
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: _toggle,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
-          decoration: BoxDecoration(
-            color: on ? colors.card : null,
-            borderRadius: BorderRadius.circular(Radii.full),
-            border: Border.all(color: on ? colors.primary : colors.border),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 14,
-                height: 14,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: on ? colors.primary : colors.mutedForeground,
-                    width: 1.5,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            height: 40,
+            constraints: const BoxConstraints(minWidth: 84),
+            padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+            decoration: BoxDecoration(
+              color: on ? colors.primary : colors.nav,
+              borderRadius: BorderRadius.circular(Radii.full),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                dot,
+                const SizedBox(width: Spacing.sm),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 150),
+                  child: Text(
+                    text,
+                    style: theme.textTheme.monoLabel.copyWith(color: ink),
                   ),
                 ),
-                child: AnimatedScale(
-                  scale: on ? 1 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutBack,
-                  child: Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: colors.highlight,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: Spacing.sm),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 150),
-                child: Text(
-                  text,
-                  style: theme.textTheme.monoLabel.copyWith(
-                    color: on ? colors.foreground : colors.mutedForeground,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

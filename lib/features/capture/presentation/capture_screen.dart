@@ -300,10 +300,16 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
         Expanded(
           child: ModePills(mode: _mode, onChanged: _selectMode),
         ),
-        AutoCaptureToggle(
-          enabled: auto,
-          onChanged: (on) =>
-              unawaited(ref.read(autoCaptureSettingProvider.notifier).set(on)),
+        const SizedBox(width: Spacing.sm),
+        ValueListenableBuilder(
+          valueListenable: _detection,
+          builder: (context, detection, _) => AutoCaptureToggle(
+            enabled: auto,
+            arming: _arming(detection),
+            onChanged: (on) => unawaited(
+              ref.read(autoCaptureSettingProvider.notifier).set(on),
+            ),
+          ),
         ),
       ],
     ),
@@ -465,14 +471,16 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen>
     );
   }
 
+  bool _arming(LiveDetection? detection) =>
+      _auto &&
+      !_busy &&
+      _autoCapture.isArmed &&
+      detection != null &&
+      detection.quad != null &&
+      !detection.isStable;
+
   Widget _hint(LiveDetection? detection) {
-    final arming =
-        _auto &&
-        !_busy &&
-        _autoCapture.isArmed &&
-        detection != null &&
-        detection.quad != null &&
-        !detection.isStable;
+    final arming = _arming(detection);
     return Align(
       alignment: Alignment.bottomCenter,
       child: Padding(
