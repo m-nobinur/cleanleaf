@@ -30,6 +30,24 @@ android {
         }
     }
 
+    androidResources {
+        noCompress += "tflite"
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("../../native/clbench/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+
+    // Size probe: `-P legacyPackaging=true` stores native libs compressed.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = project.hasProperty("legacyPackaging")
+        }
+    }
+
     buildTypes {
         release {
             // Debug signing until the release key exists (decisions.md D-05).
@@ -48,4 +66,8 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation("com.google.ai.edge.litert:litert:1.4.2")
 }
