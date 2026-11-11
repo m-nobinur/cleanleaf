@@ -5,33 +5,33 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:pathData="M32.00,44.00 L32.00,32.00 L44.00,32.00"
+        android:pathData="M34.00,45.00 L34.00,34.00 L45.00,34.00"
         android:strokeColor="@color/splash_mark"
-        android:strokeWidth="4.6"
+        android:strokeWidth="4.4"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="M76.00,44.00 L76.00,32.00 L64.00,32.00"
+        android:pathData="M74.00,45.00 L74.00,34.00 L63.00,34.00"
         android:strokeColor="@color/splash_mark"
-        android:strokeWidth="4.6"
+        android:strokeWidth="4.4"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="M76.00,64.00 L76.00,76.00 L64.00,76.00"
+        android:pathData="M74.00,63.00 L74.00,74.00 L63.00,74.00"
         android:strokeColor="@color/splash_mark"
-        android:strokeWidth="4.6"
+        android:strokeWidth="4.4"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="M32.00,64.00 L32.00,76.00 L44.00,76.00"
+        android:pathData="M34.00,63.00 L34.00,74.00 L45.00,74.00"
         android:strokeColor="@color/splash_mark"
-        android:strokeWidth="4.6"
+        android:strokeWidth="4.4"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="M41.87,67.33 C58.90,70.35 66.96,59.32 67.33,41.87 Z"
+        android:pathData="M42.93,66.27 C58.42,68.92 65.83,58.83 66.27,42.93 Z"
         android:fillColor="#0a8a5a" />
     <path
-        android:pathData="M40.67,66.13 C37.65,49.10 48.68,41.04 66.13,40.67 Z"
+        android:pathData="M41.73,65.07 C39.08,49.58 49.17,42.17 65.07,41.73 Z"
         android:fillColor="#0a8a5a" />
 </vector>
