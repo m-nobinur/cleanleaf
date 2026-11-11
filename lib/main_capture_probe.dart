@@ -18,6 +18,7 @@ import 'core/router/app_routes.dart';
 import 'features/capture/data/capture_providers.dart';
 import 'features/capture/data/pigeon_document_camera.dart';
 import 'features/capture/domain/document_camera.dart';
+import 'features/capture/presentation/auto_capture_setting.dart';
 import 'features/editor/presentation/editor_providers.dart';
 import 'features/gallery_import/data/detect_still_quad.dart';
 import 'features/gallery_import/data/gallery_import.dart';
@@ -57,6 +58,12 @@ Future<void> main() async {
   );
   // Still re-detection on the photos uses the real model, as in main.dart.
   unawaited(loadDocAligner());
+  // Earlier probe runs may have left Auto off in this package's settings.
+  final auto = container.read(autoCaptureSettingProvider.notifier);
+  _log(
+    'auto_capture_was=${await container.read(autoCaptureSettingProvider.future)}',
+  );
+  await auto.set(true);
   await _Script(container, camera, photos).run();
   _log('DONE');
 }
