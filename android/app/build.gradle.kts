@@ -30,6 +30,11 @@ android {
         }
     }
 
+    // decisions.md D-33: native libs stored compressed for the sideloaded APK.
+    packaging {
+        jniLibs { useLegacyPackaging = true }
+    }
+
     buildTypes {
         release {
             // Debug signing until the release key exists (decisions.md D-05).
@@ -48,4 +53,14 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // decisions.md D-12.
+    val camerax = "1.6.2"
+    implementation("androidx.camera:camera-core:$camerax")
+    implementation("androidx.camera:camera-camera2:$camerax")
+    implementation("androidx.camera:camera-lifecycle:$camerax")
+    implementation("androidx.concurrent:concurrent-futures-ktx:1.1.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 }
