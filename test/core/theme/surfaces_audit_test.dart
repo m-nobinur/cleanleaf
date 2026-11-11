@@ -76,6 +76,7 @@ void main() {
     String initial = '/',
     bool empty = false,
     bool failShare = false,
+    int extra = 0,
   }) async {
     tester.view.physicalSize = const Size(720, 1560);
     tester.view.devicePixelRatio = 2;
@@ -103,6 +104,8 @@ void main() {
                       fakeDocument('a', 'Scan 2026-11-12 01.21', minute: 5),
                       fakeDocument('b', 'Lease agreement', minute: 30),
                       fakeDocument('c', 'Receipt — hardware store'),
+                      for (var i = 0; i < extra; i++)
+                        fakeDocument('x$i', 'Extra $i', minute: 1),
                     ],
             ),
           ),
@@ -167,10 +170,22 @@ void main() {
         await pumpApp(tester, theme);
         await tap(tester, find.bySemanticsLabel('Files'));
         await audit(tester, '${mode}_files_grid');
-        // The last card scrolls fully clear of the floating bar.
+        // With rows behind the floating bar, the last card scrolls fully
+        // clear of it (bottom padding = bar height + gap).
+        await pumpApp(tester, theme, extra: 4);
+        await tap(tester, find.bySemanticsLabel('Files'));
+        final lastAtRest = find.ancestor(
+          of: find.text('Receipt — hardware store'),
+          matching: find.byType(DocumentCard),
+        );
+        final barTop = tester.getTopLeft(find.bySemanticsLabel('Home')).dy;
+        expect(
+          tester.getBottomLeft(lastAtRest).dy,
+          greaterThan(barTop),
+          reason: 'at rest the last card sits behind the bar',
+        );
         await tester.drag(find.byType(GridView), const Offset(0, -2000));
         await tester.pumpAndSettle();
-        final barTop = tester.getTopLeft(find.bySemanticsLabel('Home')).dy;
         final last = find.ancestor(
           of: find.text('Receipt — hardware store'),
           matching: find.byType(DocumentCard),
