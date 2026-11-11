@@ -562,7 +562,12 @@ class _Banner extends StatelessWidget {
             horizontal: Spacing.lg,
             vertical: Spacing.sm,
           ),
-          child: Text(text, style: theme.textTheme.small),
+          child: Text(
+            text,
+            style: theme.textTheme.small.copyWith(
+              color: theme.colorScheme.foreground,
+            ),
+          ),
         ),
       ),
     );

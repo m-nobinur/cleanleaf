@@ -300,7 +300,10 @@ class CameraNotice extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: theme.textTheme.muted,
+              // muted has no colour, so it would inherit the app's ink text colour.
+              style: theme.textTheme.muted.copyWith(
+                color: colors.mutedForeground,
+              ),
             ),
             if (action != null) ...[
               const SizedBox(height: Spacing.xl),

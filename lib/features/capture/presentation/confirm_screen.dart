@@ -156,7 +156,12 @@ class _ConfirmScreenState extends ConsumerState<ConfirmScreen> {
     final crop = _crop;
     final Widget child;
     if (_failed) {
-      child = Text("Couldn't show this scan.", style: theme.textTheme.muted);
+      child = Text(
+        "Couldn't show this scan.",
+        style: theme.textTheme.muted.copyWith(
+          color: theme.colorScheme.mutedForeground,
+        ),
+      );
     } else if (crop == null) {
       child = const SizedBox.shrink();
     } else {
