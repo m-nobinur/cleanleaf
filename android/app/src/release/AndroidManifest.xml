@@ -1,7 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <!-- Merged in by ML Kit's telemetry transport, whose backend main removes; Play Services
-         downloads the scanner in its own process (decisions.md D-02, D-02a). -->
-    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <!-- Merged in by ML Kit's telemetry transport, whose backend main removes (decisions.md D-37). -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
 </manifest>
