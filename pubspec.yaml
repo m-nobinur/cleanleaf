@@ -81,7 +81,7 @@ flutter:
   assets:
     - assets/licenses/
     - assets/models/lc100_fp16_padzero.tflite
-    # decisions.md D-13a: tessdata_best ben + eng, copied to app storage by the Kotlin ocr/ engine.
+    # decisions.md D-13a: tessdata_best ben + tessdata_fast eng (D-60), copied to app storage by the Kotlin ocr/ engine.
     - assets/tessdata/
     # Invisible text layer of searchable PDFs: Latin + Bengali cmap glyphs, no shaping tables.
     - assets/fonts/NotoSansBengali-Regular-subset.ttf
