@@ -46,22 +46,26 @@ object ClVision {
     ): ByteArray?
 
     /**
-     * PP-OCR (`clv_ocr_create`): [det] and [recs] are direct buffers with the .tflite files (one width-dynamic rec,
-     * or static width buckets in ascending width), [dict] the rec classes as UTF-8, one per line. Returns the engine
-     * handle, or 0. One [ocrRead] at a time per handle.
+     * PP-OCR (`clv_ocr_create`): [det] and [rec] are the .tflite files, [dict] the rec classes as UTF-8, one per
+     * line. Returns the engine handle, or 0. One [ocrRead] at a time per handle.
      */
     @JvmStatic external fun ocrCreate(
-        det: ByteBuffer,
-        recs: Array<ByteBuffer>,
+        det: ByteArray,
+        rec: ByteArray,
         dict: ByteArray,
         fp16: Boolean,
         threads: Int,
     ): Long
 
-    /** The `clv_ocr_read` JSON (UTF-8) for an encoded page, or null on failure. */
+    /**
+     * The `clv_ocr_read` JSON (UTF-8) for an encoded page; null once the native-order int in [cancel] (a direct
+     * buffer) turns nonzero. Throws IllegalStateException on failure.
+     */
     @JvmStatic external fun ocrRead(
         ocr: Long,
         encoded: ByteArray,
+        stopIfNonLatin: Boolean,
+        cancel: ByteBuffer,
     ): ByteArray?
 
     @JvmStatic external fun ocrDestroy(ocr: Long)

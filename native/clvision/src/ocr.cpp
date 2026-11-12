@@ -34,6 +34,11 @@ constexpr double kBinaryThreshold = 0.3;
 constexpr double kBoxThreshold = 0.6;
 constexpr double kUnclipRatio = 1.5;
 constexpr size_t kMaxCandidates = 1000;
+// D-59 line flags (T-032): the Latin head drops or guesses other scripts.
+constexpr double kLowConfidence = 0.8;
+constexpr double kLowCoverage = 0.6;
+// Auto re-reads a page with Tesseract eng+ben from this flagged share of line width on (D-59).
+constexpr double kNonLatinShare = 0.25;
 
 using Clock = std::chrono::steady_clock;
 
@@ -70,7 +75,6 @@ struct Net {
     if (model == nullptr) return false;
     TfLiteXNNPackDelegateOptions xnn = TfLiteXNNPackDelegateOptionsDefault();
     xnn.num_threads = threads;
-    xnn.flags |= TFLITE_XNNPACK_DELEGATE_FLAG_ENABLE_SUBGRAPH_RESHAPING;
     if (fp16) xnn.flags |= TFLITE_XNNPACK_DELEGATE_FLAG_FORCE_FP16;
     xnnpack = TfLiteXNNPackDelegateCreate(&xnn);
     if (xnnpack == nullptr) return false;
@@ -110,6 +114,7 @@ using Quad = std::array<cv::Point2f, 4>;
 
 struct Word {
   std::string text;
+  double conf = 0;
   Quad quad;
 };
 
@@ -117,13 +122,14 @@ struct Line {
   Quad quad;
   std::string text;
   double conf = 0;
+  double coverage = 0;  // the words' share of the line's width (T-032's CTC coverage)
   std::vector<Word> words;
 };
 
 struct Stats {
   double decodeMs = 0, detPreMs = 0, detInferMs = 0, detPostMs = 0;
   double recPrepMs = 0, recInferMs = 0, recResizeMs = 0, recDecodeMs = 0;
-  int resizes = 0, chunks = 0;
+  int resizes = 0;
 };
 
 // mini_box: the min-area rectangle's corners, TL, TR, BR, BL by the reference's x-sort rule.
@@ -248,16 +254,13 @@ struct Glyph {
   double x0, x1;  // in resized-line pixels
 };
 
-// Greedy CTC over [steps x classes]; stepPx maps a step to resized-line pixels from offset.
-void ctcDecode(const float* probs, int steps, int classes, double offset, double stepPx,
-               std::vector<Glyph>* out) {
+// Greedy CTC over [steps x classes]; a step is stepPx resized-line pixels wide.
+void ctcDecode(const float* probs, int steps, int classes, double stepPx, std::vector<Glyph>* out) {
   int prev = -1;
   for (int t = 0; t < steps; ++t) {
     const float* row = probs + size_t(t) * classes;
     const int best = int(std::max_element(row, row + classes) - row);
-    if (best != prev && best != 0) {
-      out->push_back({best, row[best], offset + t * stepPx, offset + (t + 1) * stepPx});
-    }
+    if (best != prev && best != 0) out->push_back({best, row[best], t * stepPx, (t + 1) * stepPx});
     prev = best;
   }
 }
@@ -272,14 +275,27 @@ int paddedWidth(const Quad& q) {
   return roundUp(std::max(kRecMinWidth, int(kRecHeight * w / h)));
 }
 
+bool isCancelled(const int32_t* cancel) {
+  return cancel != nullptr && __atomic_load_n(cancel, __ATOMIC_RELAXED) != 0;
+}
+
+// Line weight in the flagged share: the quad's top edge, as T-032 measured it.
+double topEdge(const Quad& q) { return std::max(1.0, double(cv::norm(q[1] - q[0]))); }
+
+struct Page {
+  std::vector<Line> lines;
+  double flagged = 0;  // share of line width with kLowConfidence or kLowCoverage
+  bool nonLatin = false;
+};
+
 class Engine {
  public:
   Net det;
-  std::vector<Net> recs;  // one dynamic-width model, or static width buckets in ascending width
+  Net rec;  // width-dynamic 1x48xWx3
   std::vector<std::string> classes;  // index 0 is the CTC blank
-  bool dynamic = true;
 
-  int read(const cv::Mat& page, std::vector<Line>* lines, Stats* stats) {
+  // stopIfNonLatin ends the read once the page is known to be non-Latin; its lines are then partial.
+  int read(const cv::Mat& page, bool stopIfNonLatin, const int32_t* cancel, Page* out, Stats* stats) {
     auto t = Clock::now();
     const double scale = std::min(1.0, double(kDetSide) / std::max(page.cols, page.rows));
     TfLiteTensor* in = det.input();
@@ -309,8 +325,12 @@ class Engine {
     std::vector<size_t> order(boxes.size());
     std::iota(order.begin(), order.end(), 0);
     std::stable_sort(order.begin(), order.end(), [&](size_t a, size_t b) { return widths[a] < widths[b]; });
-    lines->assign(boxes.size(), Line());
+    double total = 0, flagged = 0;
+    for (const Quad& b : boxes) total += topEdge(b);
+    std::vector<Line> lines(boxes.size());
+    std::vector<bool> done(boxes.size());
     for (size_t i : order) {
+      if (isCancelled(cancel)) return CLV_CANCELLED;
       t = Clock::now();
       bool rotated;
       const cv::Mat crop = cropLine(page, boxes[i], &rotated);
@@ -322,115 +342,89 @@ class Engine {
       std::vector<Glyph> glyphs;
       const int status = recognize(line, roundUp(imgW), &glyphs, stats);
       if (status != CLV_OK) return status;
-      Line& out = (*lines)[i];
-      out.quad = boxes[i];
-      buildLine(glyphs, line.cols, rotated, &out);
+      Line& l = lines[i];
+      l.quad = boxes[i];
+      buildLine(glyphs, line.cols, rotated, &l);
+      done[i] = true;
+      if (l.conf < kLowConfidence || l.coverage < kLowCoverage) flagged += topEdge(l.quad);
+      if (stopIfNonLatin && flagged >= kNonLatinShare * total) break;
+    }
+    out->flagged = total > 0 ? flagged / total : 0;
+    out->nonLatin = total > 0 && flagged >= kNonLatinShare * total;
+    out->lines.clear();
+    for (size_t i = 0; i < lines.size(); ++i) {
+      if (done[i]) out->lines.push_back(std::move(lines[i]));
     }
     return CLV_OK;
   }
 
  private:
-  int recognize(const cv::Mat& line, int paddedWidth, std::vector<Glyph>* glyphs, Stats* stats) {
-    if (dynamic) return runRec(recs[0], line, 0, line.cols, paddedWidth, glyphs, stats);
-    // Width buckets: the narrowest bucket that holds the line; wider lines are cut at the emptiest
-    // column in the last 40% of the widest bucket (T-032's static simulation).
-    const int widest = recs.back().width;
-    cv::Mat ink;
-    cv::reduce(line, ink, 0, cv::REDUCE_SUM, CV_32F);
-    int start = 0;
-    while (start < line.cols) {
-      int end = line.cols;
-      if (end - start > widest) {
-        const int lo = start + int(widest * 0.6), hi = start + widest;
-        float best = -1e30f;
-        for (int x = lo; x < hi; ++x) {
-          const cv::Vec3f v = ink.at<cv::Vec3f>(0, x);
-          const float brightness = v[0] + v[1] + v[2];  // the emptiest column is the brightest
-          if (brightness > best) {
-            best = brightness;
-            end = x;
-          }
-        }
-      }
-      const int w = end - start;
-      Net* net = &recs.back();
-      for (Net& r : recs) {
-        if (r.width >= w) {
-          net = &r;
-          break;
-        }
-      }
-      if (start > 0) glyphs->push_back({-1, 0, double(start), double(start)});  // chunk join
-      const int status = runRec(*net, line, start, end, net->width, glyphs, stats);
-      if (status != CLV_OK) return status;
-      ++stats->chunks;
-      start = end;
-    }
-    return CLV_OK;
-  }
-
-  int runRec(Net& net, const cv::Mat& line, int from, int to, int width, std::vector<Glyph>* glyphs,
-             Stats* stats) {
+  int recognize(const cv::Mat& line, int width, std::vector<Glyph>* glyphs, Stats* stats) {
     auto t = Clock::now();
-    if (net.width != width) {
-      if (!net.resizeWidth(width)) return CLV_ERR_INTERNAL;
+    if (rec.width != width) {
+      if (!rec.resizeWidth(width)) return CLV_ERR_INTERNAL;
       ++stats->resizes;
     }
     stats->recResizeMs += msSince(t);
-    TfLiteTensor* in = net.input();
+    TfLiteTensor* in = rec.input();
     cv::Mat input(kRecHeight, width, CV_32FC3, TfLiteTensorData(in));
     input.setTo(cv::Scalar::all(0));
-    cv::Mat content = input(cv::Rect(0, 0, to - from, kRecHeight));
-    line.colRange(from, to).convertTo(content, CV_32FC3, 1 / 127.5, -1.0);
+    cv::Mat content = input(cv::Rect(0, 0, line.cols, kRecHeight));
+    line.convertTo(content, CV_32FC3, 1 / 127.5, -1.0);
     t = Clock::now();
-    if (TfLiteInterpreterInvoke(net.interpreter) != kTfLiteOk) return CLV_ERR_INTERNAL;
+    if (TfLiteInterpreterInvoke(rec.interpreter) != kTfLiteOk) return CLV_ERR_INTERNAL;
     stats->recInferMs += msSince(t);
     t = Clock::now();
-    const TfLiteTensor* out = net.output();
+    const TfLiteTensor* out = rec.output();
     const int steps = TfLiteTensorDim(out, 1), classCount = TfLiteTensorDim(out, 2);
     if (classCount != int(classes.size())) return CLV_ERR_INTERNAL;
-    ctcDecode(static_cast<const float*>(TfLiteTensorData(out)), steps, classCount, from,
-              double(width) / steps, glyphs);
+    ctcDecode(static_cast<const float*>(TfLiteTensorData(out)), steps, classCount, double(width) / steps,
+              glyphs);
     stats->recDecodeMs += msSince(t);
     return CLV_OK;
   }
 
-  // Text, mean glyph confidence and word boxes along the line quad (words split at spaces).
+  // Text, mean glyph confidence, word boxes along the line quad (words split at spaces) and coverage.
   void buildLine(const std::vector<Glyph>& glyphs, int contentWidth, bool rotated, Line* line) {
-    double sum = 0;
-    int count = 0;
     const Quad& q = line->quad;
     auto at = [&](double a, double b) { return q[0] + (q[1] - q[0]) * float(a) + (q[3] - q[0]) * float(b); };
+    double sum = 0, wordSum = 0;
+    int wordCount = 0;
     std::string word;
     double x0 = 0, x1 = 0;
     auto flush = [&] {
       if (word.empty()) return;
-      if (!rotated) {
-        const double a = std::clamp(std::max(0.0, x0) / contentWidth, 0.0, 1.0);
-        const double b = std::clamp(std::min(double(contentWidth), x1) / contentWidth, 0.0, 1.0);
-        line->words.push_back({word, {at(a, 0), at(b, 0), at(b, 1), at(a, 1)}});
-      }
+      const double a = std::clamp(x0 / contentWidth, 0.0, 1.0);
+      const double b = std::clamp(x1 / contentWidth, 0.0, 1.0);
+      line->words.push_back({word, wordSum / wordCount, {at(a, 0), at(b, 0), at(b, 1), at(a, 1)}});
       word.clear();
+      wordSum = 0;
+      wordCount = 0;
     };
     for (const Glyph& g : glyphs) {
-      const bool space = g.cls < 0 || classes[g.cls] == " ";
-      if (g.cls >= 0) {
-        line->text += classes[g.cls];
-        sum += g.prob;
-        ++count;
-      } else if (!line->text.empty() && line->text.back() != ' ') {
-        line->text += ' ';
-      }
-      if (space) {
+      line->text += classes[g.cls];
+      sum += g.prob;
+      if (classes[g.cls] == " ") {
         flush();
         continue;
       }
       if (word.empty()) x0 = g.x0;
       word += classes[g.cls];
+      wordSum += g.prob;
+      ++wordCount;
       x1 = g.x1;
     }
     flush();
-    line->conf = count > 0 ? sum / count : 0;
+    line->conf = glyphs.empty() ? 0 : sum / glyphs.size();
+    if (rotated) {
+      // Column text has no reliable glyph positions: one word over the whole line, coverage 0 as T-032.
+      line->words.clear();
+      if (!line->text.empty()) line->words.push_back({line->text, line->conf, q});
+      return;
+    }
+    double covered = 0;
+    for (const Word& w : line->words) covered += cv::norm(w.quad[1] - w.quad[0]);
+    line->coverage = covered / std::max(1.0, cv::norm(q[1] - q[0]));
   }
 };
 
@@ -458,17 +452,82 @@ void appendQuad(std::string* out, const Quad& q) {
   out->append(buf);
 }
 
-std::string toJson(const Engine& e, int width, int height, const std::vector<Line>& lines,
-                   const Stats& s) {
-  std::string out = "{\"width\":" + std::to_string(width) + ",\"height\":" + std::to_string(height) +
-                    ",\"lines\":[";
+// The five entities Tesseract's HOcrEscape writes.
+void appendHocrText(std::string* out, const std::string& s) {
+  for (char c : s) {
+    switch (c) {
+      case '<': out->append("&lt;"); break;
+      case '>': out->append("&gt;"); break;
+      case '"': out->append("&quot;"); break;
+      case '\'': out->append("&#39;"); break;
+      case '&': out->append("&amp;"); break;
+      default: out->push_back(c);
+    }
+  }
+}
+
+// "bbox l t r b": the quad's integer bounds inside the page, as Tesseract writes them.
+std::string bbox(const Quad& q, int width, int height) {
+  float l = q[0].x, t = q[0].y, r = q[0].x, b = q[0].y;
+  for (const auto& p : q) {
+    l = std::min(l, p.x);
+    t = std::min(t, p.y);
+    r = std::max(r, p.x);
+    b = std::max(b, p.y);
+  }
+  char buf[64];
+  std::snprintf(buf, sizeof buf, "bbox %d %d %d %d", std::clamp(int(std::floor(l)), 0, width),
+                std::clamp(int(std::floor(t)), 0, height), std::clamp(int(std::ceil(r)), 0, width),
+                std::clamp(int(std::ceil(b)), 0, height));
+  return buf;
+}
+
+// hOCR in the shape of Tesseract's, so the app's one parser reads both engines.
+std::string toHocr(const std::vector<Line>& lines, int width, int height) {
+  std::string out = "<div class='ocr_page' id='page_1' title='bbox 0 0 " + std::to_string(width) + " " +
+                    std::to_string(height) + "'>\n";
+  int lineId = 0, wordId = 0;
+  for (const Line& l : lines) {
+    if (l.words.empty()) continue;
+    out += " <span class='ocr_line' id='line_1_" + std::to_string(++lineId) + "' title='" +
+           bbox(l.quad, width, height) + "'>";
+    for (const Word& w : l.words) {
+      out += "<span class='ocrx_word' id='word_1_" + std::to_string(++wordId) + "' title='" +
+             bbox(w.quad, width, height) + "; x_wconf " +
+             std::to_string(std::clamp(int(std::lround(w.conf * 100)), 0, 100)) + "'>";
+      appendHocrText(&out, w.text);
+      out += "</span> ";
+    }
+    out += "</span>\n";
+  }
+  out += "</div>\n";
+  return out;
+}
+
+std::string toJson(const Engine& e, int width, int height, const Page& page, const Stats& s) {
+  const std::vector<Line>& lines = page.lines;
+  std::string text;
+  for (const Line& l : lines) {
+    if (l.text.empty()) continue;
+    if (!text.empty()) text += '\n';
+    text += l.text;
+  }
+  char head[128];
+  std::snprintf(head, sizeof head,
+                "{\"width\":%d,\"height\":%d,\"flagged\":%.4f,\"non_latin\":%s,\"text\":", width,
+                height, page.flagged, page.nonLatin ? "true" : "false");
+  std::string out = head;
+  appendJsonString(&out, text);
+  out += ",\"hocr\":";
+  appendJsonString(&out, toHocr(lines, width, height));
+  out += ",\"lines\":[";
   for (size_t i = 0; i < lines.size(); ++i) {
     const Line& l = lines[i];
     if (i > 0) out += ',';
     out += "{\"text\":";
     appendJsonString(&out, l.text);
-    char conf[32];
-    std::snprintf(conf, sizeof conf, ",\"conf\":%.4f,\"quad\":", l.conf);
+    char conf[64];
+    std::snprintf(conf, sizeof conf, ",\"conf\":%.4f,\"coverage\":%.4f,\"quad\":", l.conf, l.coverage);
     out += conf;
     appendQuad(&out, l.quad);
     out += ",\"words\":[";
@@ -476,7 +535,8 @@ std::string toJson(const Engine& e, int width, int height, const std::vector<Lin
       if (k > 0) out += ',';
       out += "{\"text\":";
       appendJsonString(&out, l.words[k].text);
-      out += ",\"quad\":";
+      std::snprintf(conf, sizeof conf, ",\"conf\":%.4f,\"quad\":", l.words[k].conf);
+      out += conf;
       appendQuad(&out, l.words[k].quad);
       out += '}';
     }
@@ -487,11 +547,11 @@ std::string toJson(const Engine& e, int width, int height, const std::vector<Lin
                 "],\"stages\":{\"decode_ms\":%.1f,\"det_pre_ms\":%.1f,\"det_infer_ms\":%.1f,"
                 "\"det_post_ms\":%.1f,\"det_total_ms\":%.1f,\"rec_prep_ms\":%.1f,\"rec_infer_ms\":%.1f,"
                 "\"rec_resize_ms\":%.1f,\"rec_decode_ms\":%.1f,\"rec_total_ms\":%.1f,\"resizes\":%d,"
-                "\"chunks\":%d,\"boxes\":%zu,\"det_fp16\":%d,\"rec_fp16\":%d}}",
+                "\"boxes\":%zu,\"det_fp16\":%d,\"rec_fp16\":%d}}",
                 s.decodeMs, s.detPreMs, s.detInferMs, s.detPostMs,
                 s.decodeMs + s.detPreMs + s.detInferMs + s.detPostMs, s.recPrepMs, s.recInferMs,
                 s.recResizeMs, s.recDecodeMs, s.recPrepMs + s.recInferMs + s.recResizeMs + s.recDecodeMs,
-                s.resizes, s.chunks, lines.size(), int(e.det.fp16), int(e.recs[0].fp16));
+                s.resizes, lines.size(), int(e.det.fp16), int(e.rec.fp16));
   out += stats;
   return out;
 }
@@ -502,11 +562,11 @@ struct clv_ocr {
   Engine engine;
 };
 
-clv_ocr* clv_ocr_create(const uint8_t* det, int32_t det_length, const uint8_t* const* recs,
-                        const int32_t* rec_lengths, int32_t rec_count, const char* dict,
-                        int32_t dict_length, int32_t fp16, int32_t threads) {
-  if (det == nullptr || det_length <= 0 || recs == nullptr || rec_lengths == nullptr ||
-      rec_count <= 0 || dict == nullptr || dict_length <= 0 || threads <= 0) {
+clv_ocr* clv_ocr_create(const uint8_t* det, int32_t det_length, const uint8_t* rec,
+                        int32_t rec_length, const char* dict, int32_t dict_length, int32_t fp16,
+                        int32_t threads) {
+  if (det == nullptr || det_length <= 0 || rec == nullptr || rec_length <= 0 || dict == nullptr ||
+      dict_length <= 0 || threads <= 0) {
     return nullptr;
   }
   auto* ocr = new clv_ocr();
@@ -519,15 +579,10 @@ clv_ocr* clv_ocr_create(const uint8_t* det, int32_t det_length, const uint8_t* c
     at = nl + 1;
   }
   e.classes.push_back(" ");
-  e.dynamic = rec_count == 1;
-  e.recs.resize(size_t(rec_count));
-  bool ok = e.det.load(det, det_length, fp16 != 0, threads) &&
-            TfLiteTensorDim(e.det.input(), 1) == kDetSide && TfLiteTensorDim(e.det.input(), 2) == kDetSide;
-  for (int i = 0; ok && i < rec_count; ++i) {
-    ok = recs[i] != nullptr && rec_lengths[i] > 0 &&
-         e.recs[size_t(i)].load(recs[i], rec_lengths[i], fp16 != 0, threads) &&
-         (i == 0 || e.recs[size_t(i)].width > e.recs[size_t(i - 1)].width);
-  }
+  const bool ok = e.det.load(det, det_length, fp16 != 0, threads) &&
+                  TfLiteTensorDim(e.det.input(), 1) == kDetSide &&
+                  TfLiteTensorDim(e.det.input(), 2) == kDetSide &&
+                  e.rec.load(rec, rec_length, fp16 != 0, threads);
   if (!ok) {
     delete ocr;
     return nullptr;
@@ -537,8 +592,8 @@ clv_ocr* clv_ocr_create(const uint8_t* det, int32_t det_length, const uint8_t* c
 
 void clv_ocr_destroy(clv_ocr* ocr) { delete ocr; }
 
-int32_t clv_ocr_read(clv_ocr* ocr, const uint8_t* encoded, int32_t length, char** json_out,
-                     int32_t* json_length_out) {
+int32_t clv_ocr_read(clv_ocr* ocr, const uint8_t* encoded, int32_t length, int32_t stop_if_non_latin,
+                     const int32_t* cancel, char** json_out, int32_t* json_length_out) {
   if (ocr == nullptr || encoded == nullptr || length <= 0 || json_out == nullptr ||
       json_length_out == nullptr) {
     return CLV_ERR_INVALID_ARGUMENT;
@@ -550,10 +605,10 @@ int32_t clv_ocr_read(clv_ocr* ocr, const uint8_t* encoded, int32_t length, char*
         cv::imdecode(cv::Mat(1, length, CV_8U, const_cast<uint8_t*>(encoded)), cv::IMREAD_COLOR);
     if (page.empty()) return CLV_ERR_DECODE;
     stats.decodeMs = msSince(t);
-    std::vector<Line> lines;
-    const int status = ocr->engine.read(page, &lines, &stats);
+    Page result;
+    const int status = ocr->engine.read(page, stop_if_non_latin != 0, cancel, &result, &stats);
     if (status != CLV_OK) return status;
-    const std::string json = toJson(ocr->engine, page.cols, page.rows, lines, stats);
+    const std::string json = toJson(ocr->engine, page.cols, page.rows, result, stats);
     auto* buffer = static_cast<char*>(std::malloc(json.size()));
     if (buffer == nullptr) return CLV_ERR_INTERNAL;
     std::memcpy(buffer, json.data(), json.size());

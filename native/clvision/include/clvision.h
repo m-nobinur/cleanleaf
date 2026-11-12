@@ -137,24 +137,32 @@ CLV_API int32_t clv_decode_frame_codes(const clv_yuv_frame* frame, int32_t forma
 CLV_API int32_t clv_decode_image_codes(const uint8_t* encoded, int32_t length, int32_t formats,
                                        clv_code* code_out);
 
-// PP-OCR text reading (decisions.md D-59): DB line detection on a 960x960 letterbox, then CTC line
-// recognition, both on LiteRT + XNNPACK. One read at a time per engine.
+// PP-OCR text reading (decisions.md D-59, D-64): DB line detection on a 960x960 letterbox, then CTC
+// line recognition at each line's own width, both on LiteRT + XNNPACK. One read at a time per engine.
 typedef struct clv_ocr clv_ocr;
 
-// det: the 1x960x960x3 detector. recs: one width-dynamic 1x48xWx3 recognizer, or several static-width
-// ones (width buckets) in ascending width. dict: the recognizer's classes after the CTC blank, one
-// UTF-8 entry per line, without the trailing space class. fp16 asks for XNNPACK fp16, which falls back
-// to fp32 per model when it can't be built. Returns null on failure; release with clv_ocr_destroy.
-CLV_API clv_ocr* clv_ocr_create(const uint8_t* det, int32_t det_length, const uint8_t* const* recs,
-                                const int32_t* rec_lengths, int32_t rec_count, const char* dict,
-                                int32_t dict_length, int32_t fp16, int32_t threads);
+enum { CLV_CANCELLED = 3 };
+
+// det: the 1x960x960x3 detector. rec: the width-dynamic 1x48xWx3 recognizer. dict: the recognizer's
+// classes after the CTC blank, one UTF-8 entry per line, without the trailing space class. Model bytes
+// are copied. fp16 asks for XNNPACK fp16, which falls back to fp32 per model when it can't be built.
+// Returns null on failure; release with clv_ocr_destroy.
+CLV_API clv_ocr* clv_ocr_create(const uint8_t* det, int32_t det_length, const uint8_t* rec,
+                                int32_t rec_length, const char* dict, int32_t dict_length,
+                                int32_t fp16, int32_t threads);
 
 CLV_API void clv_ocr_destroy(clv_ocr* ocr);
 
-// Reads an encoded page (JPEG or PNG). On CLV_OK, *json_out (UTF-8, not NUL-terminated; release with
-// clv_free) holds {"width","height","lines":[{"text","conf","quad","words":[{"text","quad"}]}],"stages"}
-// with quads as four [x, y] page-pixel corners TL, TR, BR, BL and "stages" the timings in ms.
-CLV_API int32_t clv_ocr_read(clv_ocr* ocr, const uint8_t* encoded, int32_t length, char** json_out,
+// Reads an encoded page (JPEG or PNG). A nonzero *cancel (may be null; set from any thread) stops it
+// between lines with CLV_CANCELLED. A line is flagged when its confidence is < 0.8 or its words cover
+// < 0.6 of its width; a page is non-Latin from 25% of its line width flagged (D-59), and
+// stop_if_non_latin ends the read there, with partial lines. On CLV_OK, *json_out (UTF-8, not
+// NUL-terminated; release with clv_free) holds {"width","height","flagged","non_latin","text","hocr",
+// "lines":[{"text","conf","coverage","quad","words":[{"text","conf","quad"}]}],"stages"}: quads are four
+// [x, y] page-pixel corners TL, TR, BR, BL, "flagged" the flagged share of line width, "hocr" the lines
+// and words in Tesseract's hOCR shape and "stages" the timings in ms.
+CLV_API int32_t clv_ocr_read(clv_ocr* ocr, const uint8_t* encoded, int32_t length,
+                             int32_t stop_if_non_latin, const int32_t* cancel, char** json_out,
                              int32_t* json_length_out);
 
 #ifdef __cplusplus
