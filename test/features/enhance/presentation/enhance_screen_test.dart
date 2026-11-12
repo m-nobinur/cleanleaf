@@ -12,12 +12,17 @@ import 'package:cleanleaf/features/enhance/presentation/enhance_screen.dart';
 import 'package:cleanleaf/features/library/data/library_providers.dart';
 import 'package:cleanleaf/features/library/domain/document_page.dart';
 import 'package:cleanleaf/features/library/domain/page_repository.dart';
+import 'package:cleanleaf/features/ocr/data/ocr_providers.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
 import 'package:shadcn_ui/shadcn_ui.dart';
+
+import '../../library/presentation/fakes.dart'
+    show FakeDocumentRepository, FakeOcrRepository, fakeDocument;
 
 typedef RenderCall = ({PageFilter filter, int rotation, int maxLongSide});
 
@@ -56,6 +61,7 @@ class FakePageRepository extends Fake implements PageRepository {
   DocumentPage page;
   DocumentPage? edited;
   Uint8List? savedRender;
+  var saves = 0;
 
   @override
   Future<DocumentPage?> get(String pageId) async =>
@@ -67,6 +73,7 @@ class FakePageRepository extends Fake implements PageRepository {
     required Stream<List<int>> render,
     required Stream<List<int>> thumb,
   }) async {
+    saves++;
     savedRender = Uint8List.fromList([
       for (final chunk in await render.toList()) ...chunk,
     ]);
@@ -129,6 +136,10 @@ Future<({FakeRenderer renderer, FakePageRepository repo})> pumpEnhance(
       overrides: [
         pageRepositoryProvider.overrideWithValue(repo),
         pageRendererProvider.overrideWithValue(renderer),
+        documentRepositoryProvider.overrideWithValue(
+          FakeDocumentRepository([fakeDocument('d1', 'Receipts')]),
+        ),
+        ocrRepositoryProvider.overrideWithValue(FakeOcrRepository()),
         fileStoreProvider.overrideWithValue(
           FileStore(() async => Directory.systemTemp),
         ),
@@ -218,6 +229,25 @@ void main() {
       rotation: 90,
       maxLongSide: 0,
     ));
+    expect(find.text('Library stub'), findsOneWidget);
+  });
+
+  testWidgets('Extract text saves the page, then shows its text', (
+    tester,
+  ) async {
+    final (renderer: _, :repo) = await pumpEnhance(tester);
+
+    await tester.tap(find.text('B&W'));
+    await tester.tap(find.bySemanticsLabel('Extract text'));
+    await tester.pumpAndSettle();
+    expect(repo.edited!.filter, PageFilter.blackWhite);
+    expect(find.text('Text of p1'), findsOneWidget);
+
+    await tester.tap(find.bySemanticsLabel('Close'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ShadButton, 'Save'));
+    await tester.pumpAndSettle();
+    expect(repo.saves, 1, reason: 'unchanged edits are not rendered again');
     expect(find.text('Library stub'), findsOneWidget);
   });
 
