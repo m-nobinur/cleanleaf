@@ -152,7 +152,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                       title: 'Convert',
                       caption: widget.onConvert == null
                           ? 'Scan something first'
-                          : 'PDF, JPG, PNG',
+                          : 'PDF, Word, text, images',
                       onTap: widget.onConvert,
                     ),
                   ],

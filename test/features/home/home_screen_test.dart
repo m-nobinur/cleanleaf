@@ -132,7 +132,7 @@ void main() {
         expect(find.text(title), findsOneWidget, reason: title);
       }
       expect(find.text('Crop, filters, rotate'), findsOneWidget);
-      expect(find.text('PDF, JPG, PNG'), findsOneWidget);
+      expect(find.text('PDF, Word, text, images'), findsOneWidget);
       expect(find.byKey(const ValueKey('tile-files')), findsNothing);
     });
 

@@ -5,6 +5,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/radii.dart';
 import '../../../core/theme/spacing.dart';
+import '../../ocr/data/ocr_providers.dart';
 import '../../ocr/presentation/reading_text_chip.dart';
 import '../domain/document.dart';
 import 'library_providers.dart';
@@ -34,6 +35,10 @@ class DocumentCard extends ConsumerWidget {
         '$count ${count == 1 ? 'page' : 'pages'} · '
         '${DateFormat('d MMM yyyy').format(document.updatedAt)}';
     final thumb = PageThumbnail(path: pages?.firstOrNull?.thumbPath);
+    final readingInList =
+        layout == LibraryLayout.list &&
+        (ref.watch(readingDocumentIdsProvider).value?.contains(document.id) ??
+            false);
 
     final caption = Row(
       children: [
@@ -52,25 +57,20 @@ class DocumentCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 2),
-              Row(
-                spacing: Spacing.sm,
-                children: [
-                  Flexible(
-                    child: Text(
-                      meta,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.monoMeta.copyWith(
-                        fontSize: 11,
-                        color: theme.colorScheme.mutedForeground,
-                      ),
-                    ),
+              // List rows are too narrow for both; the chip stands in for the
+              // meta while reading. Grid tiles carry it on the thumbnail.
+              if (readingInList)
+                ReadingTextChip(documentId: document.id)
+              else
+                Text(
+                  meta,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.monoMeta.copyWith(
+                    fontSize: 11,
+                    color: theme.colorScheme.mutedForeground,
                   ),
-                  // Grid tiles are too narrow; theirs sits on the thumbnail.
-                  if (layout == LibraryLayout.list)
-                    ReadingTextChip(documentId: document.id),
-                ],
-              ),
+                ),
             ],
           ),
         ),
