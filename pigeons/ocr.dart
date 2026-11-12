@@ -10,10 +10,16 @@ import 'package:pigeon/pigeon.dart';
 )
 /// Every engine answers in hOCR, so Dart has one parser for all of them.
 class OcrPage {
-  OcrPage({required this.text, required this.hocr});
+  OcrPage({required this.text, required this.hocr, this.nonLatin});
 
   String text;
   String hocr;
+
+  /// PP-OCR only: at least 25% of the line width read as unsure Latin
+  /// (decisions.md D-59), so Auto re-reads the page with Tesseract. When the
+  /// page was read in `auto`, PP-OCR stops as soon as it knows and the text is
+  /// partial.
+  bool? nonLatin;
 }
 
 @HostApi()
@@ -30,4 +36,8 @@ abstract class OcrHostApi {
   );
 
   void cancel();
+
+  /// Frees every engine's memory; the next [recognize] loads its engine again.
+  @async
+  void release();
 }

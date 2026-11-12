@@ -99,14 +99,20 @@ int _deepHash(Object? value) {
 
 /// Every engine answers in hOCR, so Dart has one parser for all of them.
 class OcrPage {
-  OcrPage({required this.text, required this.hocr});
+  OcrPage({required this.text, required this.hocr, this.nonLatin});
 
   String text;
 
   String hocr;
 
+  /// PP-OCR only: at least 25% of the line width read as unsure Latin
+  /// (decisions.md D-59), so Auto re-reads the page with Tesseract. When the
+  /// page was read in `auto`, PP-OCR stops as soon as it knows and the text is
+  /// partial.
+  bool? nonLatin;
+
   List<Object?> _toList() {
-    return <Object?>[text, hocr];
+    return <Object?>[text, hocr, nonLatin];
   }
 
   Object encode() {
@@ -115,7 +121,11 @@ class OcrPage {
 
   static OcrPage decode(Object result) {
     result as List<Object?>;
-    return OcrPage(text: result[0]! as String, hocr: result[1]! as String);
+    return OcrPage(
+      text: result[0]! as String,
+      hocr: result[1]! as String,
+      nonLatin: result[2] as bool?,
+    );
   }
 
   @override
@@ -127,7 +137,9 @@ class OcrPage {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(text, other.text) && _deepEquals(hocr, other.hocr);
+    return _deepEquals(text, other.text) &&
+        _deepEquals(hocr, other.hocr) &&
+        _deepEquals(nonLatin, other.nonLatin);
   }
 
   @override
@@ -136,7 +148,7 @@ class OcrPage {
 
   @override
   String toString() {
-    return 'OcrPage(text: $text, hocr: $hocr)';
+    return 'OcrPage(text: $text, hocr: $hocr, nonLatin: $nonLatin)';
   }
 }
 
@@ -214,6 +226,24 @@ class OcrHostApi {
   Future<void> cancel() async {
     final pigeonVar_channelName =
         'dev.flutter.pigeon.cleanleaf.OcrHostApi.cancel$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+    _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
+  }
+
+  /// Frees every engine's memory; the next [recognize] loads its engine again.
+  Future<void> release() async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.cleanleaf.OcrHostApi.release$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,

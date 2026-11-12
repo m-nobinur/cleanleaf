@@ -126,4 +126,59 @@ void main() {
     expect(box[1], closeTo(58 * scale, 2));
     expect(box[3], closeTo(99 * scale, 2));
   }, skip: _pdftotext == null ? 'pdftotext not installed' : false);
+
+  test('every PP-OCR character extracts from the invisible layer', () async {
+    final classes = File('assets/models/ppocr_v6s_rec_latin_dict.txt')
+        .readAsLinesSync()
+        .where((c) => c.isNotEmpty)
+        .toList();
+    // Each class between two letters, so pdftotext can't drop or merge it.
+    final words = [for (final c in classes) 'x${c}x'];
+    final image = File(p.join(root.path, 'page.jpg'))
+      ..writeAsBytesSync(img.encodeJpg(img.Image(width: 1400, height: 2000)));
+    const perLine = 20;
+    final rows = (words.length / perLine).ceil();
+    final bytes = await buildPdfBytes(
+      [image.path],
+      texts: [
+        OcrResult(
+          '',
+          lines: [
+            for (var r = 0; r < rows; r++)
+              OcrLine(
+                [
+                  for (final (k, w)
+                      in words.skip(r * perLine).take(perLine).indexed)
+                    OcrWord(
+                      w,
+                      left: k / perLine,
+                      top: r / rows,
+                      right: (k + .8) / perLine,
+                      bottom: (r + .8) / rows,
+                      confidence: 90,
+                    ),
+                ],
+                left: 0,
+                top: r / rows,
+                right: 1,
+                bottom: (r + .8) / rows,
+              ),
+          ],
+          engine: 'ppocr',
+          language: OcrLanguage.english,
+        ),
+      ],
+      font: font,
+    );
+    final pdf = File(p.join(root.path, 'out.pdf'))..writeAsBytesSync(bytes);
+    final text =
+        Process.runSync(_pdftotext!, ['-enc', 'UTF-8', pdf.path, '-']).stdout
+            as String;
+
+    expect(classes, hasLength(533));
+    expect([
+      for (final w in words)
+        if (!text.contains(w)) w,
+    ], isEmpty);
+  }, skip: _pdftotext == null ? 'pdftotext not installed' : false);
 }

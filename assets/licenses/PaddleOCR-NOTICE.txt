@@ -1,0 +1,14 @@
+PP-OCRv6 small text detection and recognition models (PaddleOCR)
+Copyright (c) PaddlePaddle Authors. All Rights Reserved.
+Source: https://github.com/PaddlePaddle/PaddleOCR, models from
+https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det and
+https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec (ONNX releases).
+License: Apache License 2.0 (full text below).
+Modified:
+- The recognition model's output layer is pruned to its Latin, digit and
+  punctuation classes (535 of them, including the CTC blank and the space).
+- Both models are converted from ONNX to TensorFlow Lite: the detector with a
+  fixed 960 x 960 input, the recognizer with a variable input width.
+- Weights are stored as float16.
+The text post-processing in this app ports PaddleOCR's DB box extraction and
+CTC decoding.

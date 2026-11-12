@@ -80,6 +80,10 @@ const thirdPartyNotices = <ThirdPartyNotice>[
     assets: ['assets/licenses/AndroidX-NOTICE.txt', _apache],
   ),
   ThirdPartyNotice(
+    packages: ['PaddleOCR PP-OCRv6 small models (modified)'],
+    assets: ['assets/licenses/PaddleOCR-NOTICE.txt', _apache],
+  ),
+  ThirdPartyNotice(
     packages: ['Tesseract OCR, Tesseract4Android and trained data'],
     assets: ['assets/licenses/Tesseract-NOTICE.txt', _apache],
   ),
