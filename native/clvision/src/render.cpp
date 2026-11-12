@@ -109,6 +109,8 @@ void keepDarkContent(cv::Mat& bg) {
   blended.convertTo(bg, CV_8U);
 }
 
+constexpr double kMinPaper = 48;  // caps the division gain at ~5.3x
+
 // Paper colour per pixel: close away the ink on an eighth-size copy, blur, scale back up.
 cv::Mat background(const cv::Mat& page) {
   cv::Mat small, bg;
@@ -120,6 +122,8 @@ cv::Mat background(const cv::Mat& page) {
                    cv::BORDER_REPLICATE);
   cv::GaussianBlur(bg, bg, {k, k}, 0);
   keepDarkContent(bg);
+  // A near-black capture would otherwise be divided by ~5/255 and its sensor noise amplified 50x.
+  cv::max(bg, cv::Scalar::all(kMinPaper), bg);
   cv::resize(bg, bg, page.size(), 0, 0, cv::INTER_LINEAR);
   return bg;
 }

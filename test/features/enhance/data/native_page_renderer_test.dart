@@ -195,6 +195,29 @@ void main() {
     });
   });
 
+  group('near-black capture', () {
+    // Face-down phone: mean ~5, sensor noise sigma ~3 per channel (issue #39).
+    test('Enhanced and Grayscale do not amplify noise into confetti', () async {
+      final rng = math.Random(7);
+      final frame = img.Image(width: 600, height: 450);
+      for (final p in frame) {
+        double noise() => 5 + 3 * _gaussian(rng);
+        p
+          ..r = noise().clamp(0, 255)
+          ..g = noise().clamp(0, 255)
+          ..b = noise().clamp(0, 255);
+      }
+      final path = '${temp.path}/black.jpg';
+      File(path).writeAsBytesSync(img.encodeJpg(frame, quality: 95));
+      for (final filter in [PageFilter.enhancedColor, PageFilter.grayscale]) {
+        final out = decode(await render(path, fullFrame, filter));
+        expect(meanLuma(out), lessThan(40), reason: filter.name);
+        expect(lumaSpread(out), lessThan(20), reason: filter.name);
+        expect(chroma(out), lessThan(16), reason: filter.name);
+      }
+    });
+  });
+
   group('adjustments', () {
     late String plain;
     setUpAll(() async => plain = await writeScene('adjust.jpg'));
@@ -629,3 +652,7 @@ double edgeEnergy(img.Image image) {
   }
   return sum / (image.width * image.height);
 }
+
+double _gaussian(math.Random rng) =>
+    math.sqrt(-2 * math.log(1 - rng.nextDouble())) *
+    math.cos(2 * math.pi * rng.nextDouble());
