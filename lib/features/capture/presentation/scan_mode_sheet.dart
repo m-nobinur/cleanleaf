@@ -4,7 +4,6 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/storage/storage_providers.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/theme/radii.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/widgets/bento_tile.dart';
 import '../../../core/widgets/corner_brackets.dart';
@@ -39,13 +38,13 @@ extension ScanModeLabels on ScanMode {
   };
 
   String get caption => switch (this) {
-    ScanMode.document => 'Pages, letters, forms',
+    ScanMode.document => 'Pages and forms',
     ScanMode.idCard => 'Snaps to card size',
-    ScanMode.passport => 'Photo page, snaps to size',
+    ScanMode.passport => 'Photo page',
     ScanMode.receipt => 'Long, narrow slips',
-    ScanMode.book => 'Two-page spread as one page',
+    ScanMode.book => 'Two pages as one',
     ScanMode.qrCode => 'Read links and text',
-    ScanMode.barcode => 'Read product codes',
+    ScanMode.barcode => 'Product codes',
   };
 
   IconData get icon => switch (this) {
@@ -72,6 +71,7 @@ extension ScanModeLabels on ScanMode {
 Future<ScanMode?> showScanModeSheet(BuildContext context) =>
     showShadSheet<ScanMode>(
       context: context,
+      barrierLabel: 'Dismiss',
       side: ShadSheetSide.bottom,
       builder: (_) => const ScanModeSheet(),
     );
@@ -82,75 +82,38 @@ class ScanModeSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
-    final colors = theme.colorScheme;
     return ShadSheet(
-      radius: const BorderRadius.vertical(top: Radius.circular(Radii.lg)),
-      removeBorderRadiusWhenTiny: false,
-      closeIcon: const SizedBox.shrink(),
       title: Row(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            padding: const EdgeInsets.all(Spacing.md),
-            decoration: BoxDecoration(
-              color: colors.tileLeaf,
-              shape: BoxShape.circle,
-            ),
-            child: CornerBrackets(
-              color: colors.primary,
-              length: 0.34,
-              child: const SizedBox.expand(),
-            ),
-          ),
+          const BrandBadge(),
           const SizedBox(width: Spacing.md),
           Text('Scan', style: theme.textTheme.greeting.copyWith(fontSize: 28)),
         ],
       ),
       child: Padding(
         padding: const EdgeInsets.only(top: Spacing.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: GridView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          // Without it the grid adds the status-bar inset as top padding.
+          padding: EdgeInsets.zero,
+          // A fixed height keeps all seven modes on one 360 dp screen.
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: Spacing.md,
+            crossAxisSpacing: Spacing.md,
+            mainAxisExtent: 140,
+          ),
           children: [
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              // Without it the grid adds the status-bar inset as top padding.
-              padding: EdgeInsets.zero,
-              mainAxisSpacing: Spacing.md,
-              crossAxisSpacing: Spacing.md,
-              childAspectRatio: 1.05,
-              children: [
-                for (final mode in ScanMode.values)
-                  BentoTile(
-                    key: ValueKey(mode),
-                    tone: mode.tone,
-                    icon: mode.icon,
-                    title: mode.label,
-                    caption: mode.caption,
-                    onTap: () => Navigator.of(context).pop(mode),
-                  ),
-              ],
-            ),
-            const SizedBox(height: Spacing.xl),
-            Semantics(
-              label: 'Close',
-              button: true,
-              excludeSemantics: true,
-              onTap: () => Navigator.of(context).pop(),
-              child: ShadIconButton(
-                width: 56,
-                height: 56,
-                decoration: const ShadDecoration(shape: BoxShape.circle),
-                backgroundColor: colors.tileInk,
-                hoverBackgroundColor: colors.tileInk,
-                foregroundColor: colors.onTileInk,
-                hoverForegroundColor: colors.onTileInk,
-                icon: const Icon(LucideIcons.x, size: 22),
-                onPressed: () => Navigator.of(context).pop(),
+            for (final mode in ScanMode.values)
+              BentoTile(
+                key: ValueKey(mode),
+                tone: mode.tone,
+                icon: mode.icon,
+                title: mode.label,
+                caption: mode.caption,
+                onTap: () => Navigator.of(context).pop(mode),
               ),
-            ),
           ],
         ),
       ),

@@ -17,7 +17,12 @@ void main() {
     test('$name defines every brand token', () {
       expect(
         () => [
-          c.highlight, c.hairline, c.badge, c.tileLeaf, c.tileEmber, //
+          c.highlight,
+          c.leafText,
+          c.hairline,
+          c.badge,
+          c.tileLeaf,
+          c.tileEmber, //
           c.tileMist, c.tileInk, c.onTileInk, c.tileLeafBadge,
           c.tileLeafIcon, c.tileLeafEdge, c.tileEmberBadge, c.tileEmberIcon,
           c.tileEmberEdge, c.tileMistBadge, c.tileMistIcon, c.tileInkBadge,
@@ -43,6 +48,14 @@ void main() {
         'muted on card': (c.mutedForeground, c.card),
         'onNav on nav': (c.onNav, c.nav),
         'onNavSelected on navSelected': (c.onNavSelected, c.navSelected),
+        'leafText on card': (c.leafText, c.card),
+        'leafText on background': (c.leafText, c.background),
+        'toast text on toast': (c.onTileInk, c.tileInk),
+        'foreground on muted': (c.foreground, c.muted),
+        'error toast text': (
+          theme.destructiveToastTheme.titleStyle!.color!,
+          theme.destructiveToastTheme.backgroundColor!,
+        ),
       };
       for (final MapEntry(key: label, value: (fg, bg)) in pairs.entries) {
         expect(_contrast(fg, bg), greaterThanOrEqualTo(4.5), reason: label);

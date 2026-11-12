@@ -319,7 +319,7 @@ class _EditorState extends ConsumerState<_Editor> {
             builder: (context, valid, _) => ShadButton(
               size: ShadButtonSize.lg,
               // Fits beside three 72 dp tools on a 360 dp phone.
-              padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
               enabled: valid && !_saving,
               onPressed: _continue,
               child: const Text('Continue'),
