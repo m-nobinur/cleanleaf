@@ -5,6 +5,9 @@ import 'package:cleanleaf/features/library/domain/document.dart';
 import 'package:cleanleaf/features/library/domain/document_page.dart';
 import 'package:cleanleaf/features/library/domain/document_repository.dart';
 import 'package:cleanleaf/features/library/domain/page_repository.dart';
+import 'package:cleanleaf/features/ocr/domain/ocr_language.dart';
+import 'package:cleanleaf/features/ocr/domain/ocr_repository.dart';
+import 'package:cleanleaf/features/ocr/domain/ocr_result.dart';
 
 Document fakeDocument(String id, String title, {int minute = 0}) => Document(
   id,
@@ -70,6 +73,10 @@ class FakePageRepository implements PageRepository {
       Stream.value(pagesByDocument[documentId] ?? const []);
 
   @override
+  Future<List<DocumentPage>> getByDocument(String documentId) async =>
+      pagesByDocument[documentId] ?? const [];
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }
 
@@ -89,4 +96,45 @@ class MemorySettingsStore implements SettingsStore {
 
   @override
   Future<void> write(String key, String value) async => _values[key] = value;
+}
+
+/// Page text is `Text of <pageId>`; search matches titles and
+/// [textByDocument], case-insensitively, like the LIKE search.
+class FakeOcrRepository implements OcrRepository {
+  FakeOcrRepository({
+    this.documents,
+    this.textByDocument = const {},
+    this.reading = const {},
+  });
+
+  final FakeDocumentRepository? documents;
+  final Map<String, String> textByDocument;
+  final Set<String> reading;
+
+  @override
+  Future<OcrResult> extractText(String pageId, OcrLanguage? language) async =>
+      OcrResult(
+        'Text of $pageId',
+        lines: const [],
+        engine: 'fake',
+        language: language ?? OcrLanguage.auto,
+      );
+
+  @override
+  Stream<OcrStatus?> watchStatus(String pageId) => const Stream.empty();
+
+  @override
+  Stream<Set<String>> watchReadingDocumentIds() => Stream.value(reading);
+
+  @override
+  Stream<List<Document>> watchSearch(String query) async* {
+    final q = query.toLowerCase();
+    yield [
+      for (final d in await documents!.watchAll().first)
+        if ('${d.title} ${textByDocument[d.id] ?? ''}'.toLowerCase().contains(
+          q,
+        ))
+          d,
+    ];
+  }
 }

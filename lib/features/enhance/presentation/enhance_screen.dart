@@ -14,6 +14,7 @@ import '../../../core/theme/spacing.dart';
 import '../../../core/widgets/round_icon_button.dart';
 import '../../library/data/library_providers.dart';
 import '../../library/domain/document_page.dart';
+import '../../ocr/presentation/extract_text_sheet.dart';
 import '../data/enhance_providers.dart';
 import '../domain/page_renderer.dart';
 import 'adjust_panel.dart';
@@ -101,6 +102,9 @@ class _EnhanceState extends ConsumerState<_Enhance> {
   late final _slider = ShadSliderController(initialValue: _adjustments[_tool]!);
   bool _comparing = false;
   bool _saving = false;
+  // The edits the last save wrote, so Save after Extract text keeps the render
+  // (and its text) instead of rendering and reading the page again.
+  String? _savedEdits;
   // One render per (filter, size, adjusted) at the current rotation and
   // adjustments; cleared when either changes.
   final _renders = <(PageFilter, int, bool), Future<Uint8List>>{};
@@ -222,8 +226,12 @@ class _EnhanceState extends ConsumerState<_Enhance> {
         : context.go(AppRoutes.editor(widget.page.id));
   }
 
-  Future<void> _save() async {
+  String get _edits => '$_filter $_rotation $_adjustments';
+
+  /// Writes the render and edits; leaves [_saving] set on success.
+  Future<bool> _persist() async {
     setState(() => _saving = true);
+    if (_savedEdits == _edits) return true;
     try {
       final repo = ref.read(pageRepositoryProvider);
       final renderer = ref.read(pageRendererProvider);
@@ -251,7 +259,8 @@ class _EnhanceState extends ConsumerState<_Enhance> {
         ),
       );
       ref.read(_draftsProvider).remove(page.id);
-      if (mounted) context.go(AppRoutes.library);
+      _savedEdits = _edits;
+      return true;
     } catch (_) {
       if (mounted) {
         setState(() => _saving = false);
@@ -259,7 +268,27 @@ class _EnhanceState extends ConsumerState<_Enhance> {
           const ShadToast.destructive(title: Text("Couldn't save the page")),
         );
       }
+      return false;
     }
+  }
+
+  Future<void> _save() async {
+    if (await _persist() && mounted) context.go(AppRoutes.library);
+  }
+
+  /// Saves first: OCR reads the saved render, so the text matches the screen.
+  Future<void> _extractText() async {
+    if (!await _persist() || !mounted) return;
+    setState(() => _saving = false);
+    final document = await ref
+        .read(documentRepositoryProvider)
+        .get(widget.page.documentId);
+    if (!mounted) return;
+    await showExtractTextSheet(
+      context,
+      title: document?.title ?? '',
+      pageIds: [widget.page.id],
+    );
   }
 
   @override
@@ -404,6 +433,13 @@ class _EnhanceState extends ConsumerState<_Enhance> {
                     _dragPreview = null;
                     _renders.clear();
                   });
+                },
+              ),
+              RoundIconButton(
+                icon: LucideIcons.scanText,
+                label: 'Extract text',
+                onPressed: () {
+                  if (!_saving) _extractText();
                 },
               ),
               Expanded(

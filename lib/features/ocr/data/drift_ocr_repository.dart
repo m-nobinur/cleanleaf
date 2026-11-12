@@ -36,13 +36,13 @@ class DriftOcrRepository implements OcrRepository {
   }
 
   @override
-  Future<OcrResult> extractText(String pageId, OcrLanguage language) async {
+  Future<OcrResult> extractText(String pageId, OcrLanguage? language) async {
     final row = await _byId(pageId).getSingle();
     final status = row.ocrStatus == null ? null : _status(row);
-    if (ocrLanguageOf(row) != language ||
+    if ((language != null && ocrLanguageOf(row) != language) ||
         status == null ||
         status == OcrStatus.failed) {
-      await _queue.request(pageId, language);
+      await _queue.request(pageId, language ?? OcrLanguage.auto);
     } else if (status != OcrStatus.done) {
       _queue.prioritize(pageId);
     }

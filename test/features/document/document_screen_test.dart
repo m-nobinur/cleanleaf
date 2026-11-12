@@ -4,6 +4,7 @@ import 'package:cleanleaf/features/document/presentation/extract_text_slot.dart'
 import 'package:cleanleaf/features/export/data/export_providers.dart';
 import 'package:cleanleaf/features/export/domain/convert_format.dart';
 import 'package:cleanleaf/features/library/data/library_providers.dart';
+import 'package:cleanleaf/features/ocr/data/ocr_providers.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -63,6 +64,7 @@ void main() {
           shareDocumentJpgProvider.overrideWithValue(
             (id) async => sharedJpg.add(id),
           ),
+          ocrRepositoryProvider.overrideWithValue(FakeOcrRepository()),
           if (withExtractText)
             extractTextActionProvider.overrideWithValue(
               (context, id) async => extracted.add(id),
@@ -103,13 +105,14 @@ void main() {
     expect(find.text('editor:p1'), findsOneWidget);
   });
 
-  testWidgets('convert offers PDF and JPG only', (tester) async {
+  testWidgets('convert offers image and text formats', (tester) async {
     await pumpDocument(tester);
     await tapAndSettle(tester, find.bySemanticsLabel('Convert'));
-    expect(find.byKey(const ValueKey(ConvertFormat.pdf)), findsOneWidget);
-    expect(find.byKey(const ValueKey(ConvertFormat.jpg)), findsOneWidget);
-    expect(find.byKey(const ValueKey(ConvertFormat.png)), findsOneWidget);
-    expect(find.textContaining('Text'), findsNothing);
+    for (final format in ConvertFormat.values) {
+      expect(find.byKey(ValueKey(format)), findsOneWidget);
+    }
+    expect(find.text('Searchable PDF'), findsOneWidget);
+    expect(find.text('Word'), findsOneWidget);
 
     await tapAndSettle(tester, find.byKey(const ValueKey(ConvertFormat.jpg)));
     expect(sharedJpg, ['a']);
@@ -135,9 +138,10 @@ void main() {
     expect(find.text('Tax 2026'), findsOneWidget);
   });
 
-  testWidgets('extract text is hidden until OCR provides it', (tester) async {
+  testWidgets('extract text shows the text of every page', (tester) async {
     await pumpDocument(tester);
-    expect(find.bySemanticsLabel('Extract text'), findsNothing);
+    await tapAndSettle(tester, find.bySemanticsLabel('Extract text'));
+    expect(find.text('Text of p1\n\nText of p2'), findsOneWidget);
   });
 
   testWidgets('extract text runs the provided action', (tester) async {
