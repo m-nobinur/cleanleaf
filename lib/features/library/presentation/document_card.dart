@@ -5,6 +5,8 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/radii.dart';
 import '../../../core/theme/spacing.dart';
+import '../../ocr/data/ocr_providers.dart';
+import '../../ocr/presentation/reading_text_chip.dart';
 import '../domain/document.dart';
 import 'library_providers.dart';
 
@@ -33,6 +35,10 @@ class DocumentCard extends ConsumerWidget {
         '$count ${count == 1 ? 'page' : 'pages'} · '
         '${DateFormat('d MMM yyyy').format(document.updatedAt)}';
     final thumb = PageThumbnail(path: pages?.firstOrNull?.thumbPath);
+    final readingInList =
+        layout == LibraryLayout.list &&
+        (ref.watch(readingDocumentIdsProvider).value?.contains(document.id) ??
+            false);
 
     final caption = Row(
       children: [
@@ -51,15 +57,20 @@ class DocumentCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 2),
-              Text(
-                meta,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.monoMeta.copyWith(
-                  fontSize: 11,
-                  color: theme.colorScheme.mutedForeground,
+              // List rows are too narrow for both; the chip stands in for the
+              // meta while reading. Grid tiles carry it on the thumbnail.
+              if (readingInList)
+                ReadingTextChip(documentId: document.id)
+              else
+                Text(
+                  meta,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.monoMeta.copyWith(
+                    fontSize: 11,
+                    color: theme.colorScheme.mutedForeground,
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -102,7 +113,19 @@ class DocumentCard extends ConsumerWidget {
             LibraryLayout.grid => Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(child: framedThumb),
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      framedThumb,
+                      Positioned(
+                        left: Spacing.xs,
+                        bottom: Spacing.xs,
+                        child: ReadingTextChip(documentId: document.id),
+                      ),
+                    ],
+                  ),
+                ),
                 Padding(
                   padding: const EdgeInsets.only(left: Spacing.xs, top: 2),
                   child: caption,

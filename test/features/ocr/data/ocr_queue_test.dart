@@ -279,6 +279,26 @@ void main() {
     },
   );
 
+  test('extractText without a language reuses any stored result', () async {
+    final doc = await docs.create('A');
+    final page = await renderedPage(doc.id);
+
+    final unread = ocr.extractText(page.id, null);
+    await until(() => engine.calls.length == 1);
+    expect(engine.calls.single.$2, OcrLanguage.auto);
+    engine.finish('auto', OcrLanguage.auto);
+    await unread;
+
+    final bangla = ocr.extractText(page.id, OcrLanguage.bangla);
+    await until(() => engine.calls.length == 2);
+    engine.finish('বাংলা', OcrLanguage.bangla);
+    await bangla;
+
+    final stored = await ocr.extractText(page.id, null);
+    expect([stored.text, stored.language], ['বাংলা', OcrLanguage.bangla]);
+    expect(engine.calls, hasLength(2));
+  });
+
   group('search', () {
     Future<void> setText(String pageId, String text) =>
         (db.update(db.pages)..where((t) => t.id.equals(pageId))).write(

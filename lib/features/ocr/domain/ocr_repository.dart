@@ -19,10 +19,10 @@ abstract interface class OcrRepository {
   /// Documents with a page waiting for or undergoing OCR.
   Stream<Set<String>> watchReadingDocumentIds();
 
-  /// The stored result when the page was read in [language]; otherwise queues
-  /// the page ahead of background work and completes when it is read.
-  /// Throws [OcrFailed].
-  Future<OcrResult> extractText(String pageId, OcrLanguage language);
+  /// The stored result when the page was read in [language] (any language
+  /// when null); otherwise queues the page ahead of background work, in
+  /// [language] or auto, and completes when it is read. Throws [OcrFailed].
+  Future<OcrResult> extractText(String pageId, OcrLanguage? language);
 
   /// Documents whose title or page text contains every whitespace-separated
   /// term of [query], most recently updated first; all documents when blank.

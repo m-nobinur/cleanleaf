@@ -10,14 +10,21 @@ import 'core/licenses/third_party_licenses.dart';
 import 'core/platform/clvision.dart';
 import 'core/storage/storage_providers.dart';
 import 'features/enhance/data/enhance_providers.dart';
+import 'features/export/data/export_providers.dart';
+import 'features/export/domain/export_text.dart';
 import 'features/gallery_import/data/detect_still_quad.dart';
 import 'features/library/data/library_providers.dart';
 import 'features/library/domain/document_page.dart';
+import 'features/ocr/data/ocr_providers.dart';
 
 // Release probe for UI screenshots (T-036): when the library is empty, turns
 // the real photos in <external files>/seed/ into rendered documents the way
 // Save does, then runs the real app. "Lease agreement__2.jpg" is page 2 of
 // "Lease agreement". Logs CLSEED lines and a final CLSEED DONE.
+// T-031: background OCR starts [_ocrDelay] after launch (time to capture the
+// "Reading text…" chip), logs CLOCR DONE when every page is read, then writes
+// each document as searchable PDF, .docx and .txt to <external files>/export/
+// and logs CLOCR EXPORTED.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   registerThirdPartyLicenses();
@@ -34,6 +41,53 @@ Future<void> main() async {
       child: const CleanleafApp(),
     ),
   );
+  try {
+    await _readAndExport(container);
+  } catch (e) {
+    debugPrint('CLOCR ERROR $e');
+  }
+}
+
+const _ocrDelay = Duration(seconds: 45);
+
+Future<void> _readAndExport(ProviderContainer container) async {
+  await Future<void>.delayed(_ocrDelay);
+  debugPrint('CLOCR START');
+  final started = DateTime.now();
+  await container.read(ocrQueueProvider).start();
+  await container
+      .read(ocrRepositoryProvider)
+      .watchReadingDocumentIds()
+      .firstWhere((ids) => ids.isEmpty);
+  debugPrint('CLOCR DONE in ${DateTime.now().difference(started).inSeconds} s');
+
+  final export = Directory(
+    p.join((await getExternalStorageDirectory())!.path, 'export'),
+  );
+  final exporter = container.read(exportTextProvider);
+  final toExternal = ExportText(
+    documents: exporter.documents,
+    pages: exporter.pages,
+    ocr: exporter.ocr,
+    resolve: exporter.resolve,
+    outputDir: () async => export,
+    buildSearchablePdf: exporter.buildSearchablePdf,
+  );
+  final pages = container.read(pageRepositoryProvider);
+  for (final document
+      in await container.read(documentRepositoryProvider).watchAll().first) {
+    for (final page in await pages.getByDocument(document.id)) {
+      debugPrint('CLOCR page "${document.title}" ${page.ocrStatus?.name}');
+    }
+    for (final file in [
+      await toExternal.searchablePdf(document.id),
+      await toExternal.docx(document.id),
+      await toExternal.txt(document.id),
+    ]) {
+      debugPrint('CLOCR export ${file.path} ${file.lengthSync()} B');
+    }
+  }
+  debugPrint('CLOCR EXPORTED');
 }
 
 Future<void> _seed(ProviderContainer container) async {

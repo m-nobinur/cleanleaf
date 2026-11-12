@@ -18,6 +18,7 @@ import 'package:cleanleaf/features/export/data/export_providers.dart';
 import 'package:cleanleaf/features/home/presentation/home_screen.dart';
 import 'package:cleanleaf/features/library/data/library_providers.dart';
 import 'package:cleanleaf/features/library/presentation/document_card.dart';
+import 'package:cleanleaf/features/ocr/data/ocr_providers.dart';
 import 'package:cleanleaf/features/scan_engine/presentation/scan_engine_providers.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -117,6 +118,7 @@ void main() {
             }),
           ),
           settingsStoreProvider.overrideWithValue(MemorySettingsStore()),
+          ocrRepositoryProvider.overrideWithValue(FakeOcrRepository()),
           googleScannerAvailableProvider.overrideWith((ref) async => true),
           shareDocumentPdfProvider.overrideWithValue(
             (id, {onProgress}) async =>
