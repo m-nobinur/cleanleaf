@@ -14,4 +14,7 @@ interface OcrEngine {
 
     /** Interrupts a running [read]; called from the main thread. */
     fun stop()
+
+    /** Frees the engine's native memory on the OCR thread; the next [read] loads it again. */
+    fun release()
 }

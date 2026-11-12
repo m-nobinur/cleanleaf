@@ -205,20 +205,29 @@ class FlutterError (
  */
 data class OcrPage (
   val text: String,
-  val hocr: String
+  val hocr: String,
+  /**
+   * PP-OCR only: at least 25% of the line width read as unsure Latin
+   * (decisions.md D-59), so Auto re-reads the page with Tesseract. When the
+   * page was read in `auto`, PP-OCR stops as soon as it knows and the text is
+   * partial.
+   */
+  val nonLatin: Boolean? = null
 )
  {
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): OcrPage {
       val text = pigeonVar_list[0] as String
       val hocr = pigeonVar_list[1] as String
-      return OcrPage(text, hocr)
+      val nonLatin = pigeonVar_list[2] as Boolean?
+      return OcrPage(text, hocr, nonLatin)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
       text,
       hocr,
+      nonLatin,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -229,17 +238,18 @@ data class OcrPage (
       return true
     }
     val other = other as OcrPage
-    return OcrApiPigeonUtils.deepEquals(this.text, other.text) && OcrApiPigeonUtils.deepEquals(this.hocr, other.hocr)
+    return OcrApiPigeonUtils.deepEquals(this.text, other.text) && OcrApiPigeonUtils.deepEquals(this.hocr, other.hocr) && OcrApiPigeonUtils.deepEquals(this.nonLatin, other.nonLatin)
   }
 
   override fun hashCode(): Int {
     var result = javaClass.hashCode()
     result = 31 * result + OcrApiPigeonUtils.deepHash(this.text)
     result = 31 * result + OcrApiPigeonUtils.deepHash(this.hocr)
+    result = 31 * result + OcrApiPigeonUtils.deepHash(this.nonLatin)
     return result
   }
   override fun toString(): String {
-    return "OcrPage(text=$text, hocr=$hocr)"
+    return "OcrPage(text=$text, hocr=$hocr, nonLatin=$nonLatin)"
   }
 }
 private open class OcrApiPigeonCodec : StandardMessageCodec() {
@@ -274,6 +284,8 @@ interface OcrHostApi {
    */
   suspend fun recognize(engine: String, imagePath: String, language: String, maxLongSide: Long): OcrPage?
   fun cancel()
+  /** Frees every engine's memory; the next [recognize] loads its engine again. */
+  suspend fun release()
 
   companion object {
     /** The codec used by OcrHostApi. */
@@ -317,6 +329,24 @@ interface OcrHostApi {
               OcrApiPigeonUtils.wrapError(exception)
             }
             reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.cleanleaf.OcrHostApi.release$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            CoroutineScope(Dispatchers.Main).launch {
+              val wrapped: List<Any?> = try {
+                api.release()
+                listOf(null)
+              } catch (exception: Throwable) {
+                OcrApiPigeonUtils.wrapError(exception)
+              }
+              reply.reply(wrapped)
+            }
           }
         } else {
           channel.setMessageHandler(null)

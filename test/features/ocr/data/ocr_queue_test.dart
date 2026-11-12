@@ -22,6 +22,7 @@ class FakeOcrEngine implements OcrEngine {
   final calls = <(String, OcrLanguage)>[];
   final _running = <Completer<OcrResult?>>[];
   var cancels = 0;
+  var releases = 0;
 
   @override
   Future<OcrResult?> recognize(String imagePath, OcrLanguage language) {
@@ -36,6 +37,9 @@ class FakeOcrEngine implements OcrEngine {
       if (!c.isCompleted) c.complete(null);
     }
   }
+
+  @override
+  Future<void> release() async => releases++;
 
   void finish(String text, OcrLanguage language) => _running.last.complete(
     OcrResult(
@@ -391,5 +395,24 @@ void main() {
         );
       }
     });
+  });
+
+  test('releases the engine once the queue drains', () async {
+    await queue.start();
+    final doc = await docs.create('A');
+    final first = await renderedPage(doc.id);
+    final second = await renderedPage(doc.id);
+    await until(() => engine.calls.length == 1);
+
+    engine.finish('One', OcrLanguage.auto);
+    await until(() => engine.calls.length == 2);
+    expect(engine.releases, 0, reason: 'more pages wait');
+    engine.finish('Two', OcrLanguage.auto);
+    await until(() => engine.releases == 1);
+
+    expect(
+      [await status(first.id), await status(second.id)],
+      [OcrStatus.done, OcrStatus.done],
+    );
   });
 }

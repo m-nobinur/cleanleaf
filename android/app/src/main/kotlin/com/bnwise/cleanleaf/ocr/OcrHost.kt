@@ -7,11 +7,15 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.Executors
 
-/** Runs engines on one low-priority thread; Dart queues the pages (decisions.md D-13a). */
+/**
+ * Runs engines on one low-priority thread; Dart queues the pages and picks the engine (decisions.md D-13a, D-64).
+ * Only one engine is loaded at a time.
+ */
 class OcrHost(
     context: Context,
 ) : OcrHostApi {
-    private val engines: Map<String, OcrEngine> = mapOf(TesseractEngine.ID to TesseractEngine(context))
+    private val engines: Map<String, OcrEngine> =
+        mapOf(TesseractEngine.ID to TesseractEngine(context), PpOcrEngine.ID to PpOcrEngine(context))
     private val worker =
         Executors
             .newSingleThreadExecutor { task ->
@@ -36,7 +40,10 @@ class OcrHost(
         current = reader
         cancelled = false
         return try {
-            withContext(worker) { reader.read(File(imagePath), language, maxLongSide.toInt()) { cancelled } }
+            withContext(worker) {
+                engines.values.forEach { if (it !== reader) it.release() }
+                reader.read(File(imagePath), language, maxLongSide.toInt()) { cancelled }
+            }
         } finally {
             current = null
         }
@@ -46,4 +53,6 @@ class OcrHost(
         cancelled = true
         current?.stop()
     }
+
+    override suspend fun release() = withContext(worker) { engines.values.forEach { it.release() } }
 }

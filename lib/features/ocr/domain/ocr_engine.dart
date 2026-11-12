@@ -8,4 +8,7 @@ abstract interface class OcrEngine {
 
   /// Stops the recognition in progress, if any.
   Future<void> cancel();
+
+  /// Frees the engine's memory; the next [recognize] loads it again.
+  Future<void> release();
 }

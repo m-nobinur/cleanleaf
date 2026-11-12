@@ -59,16 +59,20 @@ class OcrQueue {
       return;
     }
     _busy = true;
+    var read = false;
     try {
       do {
         _again = false;
         for (var row = await _next(); row != null; row = await _next()) {
           await _read(row);
+          read = true;
         }
       } while (_again);
     } finally {
       _busy = false;
     }
+    // An idle engine holds hundreds of MB (decisions.md D-64).
+    if (read) await _engine.release();
   }
 
   Future<PageRow?> _next() async {

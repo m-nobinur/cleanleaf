@@ -9,7 +9,7 @@ import io.flutter.FlutterInjector
 import java.io.File
 import java.io.FileOutputStream
 
-/** Tesseract4Android with tessdata_best eng and ben (decisions.md D-13a). */
+/** Tesseract4Android with tessdata_fast eng and tessdata_best ben (decisions.md D-13a, D-60). */
 class TesseractEngine(
     private val context: Context,
 ) : OcrEngine {
@@ -53,6 +53,12 @@ class TesseractEngine(
 
     override fun stop() {
         tess?.stop()
+    }
+
+    override fun release() {
+        tess?.recycle()
+        tess = null
+        languages = null
     }
 
     private fun load(

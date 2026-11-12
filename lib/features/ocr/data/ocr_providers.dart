@@ -8,10 +8,7 @@ import 'drift_ocr_repository.dart';
 import 'ocr_queue.dart';
 import 'pigeon_ocr_engine.dart';
 
-// Interim: Tesseract for both languages until T-032 picks the English engine.
-final ocrEngineProvider = Provider<OcrEngine>(
-  (ref) => PigeonOcrEngine('tesseract'),
-);
+final ocrEngineProvider = Provider<OcrEngine>((ref) => PigeonOcrEngine());
 
 /// Started once by main(); reads pending pages in the background.
 final ocrQueueProvider = Provider<OcrQueue>((ref) {

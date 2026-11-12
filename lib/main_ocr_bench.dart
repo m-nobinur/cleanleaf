@@ -139,7 +139,11 @@ Future<void> _queueEndToEnd(String render) async {
   final db = AppDatabase(NativeDatabase.memory());
   final files = FileStore(() async => root);
   final pages = DriftPageRepository(db, files);
-  final queue = OcrQueue(db, files, PigeonOcrEngine('tesseract'));
+  final queue = OcrQueue(
+    db,
+    files,
+    PigeonOcrEngine(engineFor: (_) => tesseractEngine),
+  );
   final ocr = DriftOcrRepository(db, queue);
   final doc = await DriftDocumentRepository(db, files).create('bench');
   final page = await pages.add(
@@ -184,7 +188,7 @@ Future<void> _searchTiming() async {
     OcrQueue(
       db,
       FileStore(() async => Directory.systemTemp),
-      PigeonOcrEngine('none'),
+      PigeonOcrEngine(engineFor: (_) => 'none'),
     ),
   );
   const text =
