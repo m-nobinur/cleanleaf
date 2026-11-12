@@ -7,6 +7,8 @@ import com.bnwise.cleanleaf.mlkit.GoogleScannerHost
 import com.bnwise.cleanleaf.mlkit.GoogleScannerHostApi
 import com.bnwise.cleanleaf.ocr.OcrHost
 import com.bnwise.cleanleaf.ocr.OcrHostApi
+import com.bnwise.cleanleaf.ocrbench.OcrBenchHost
+import com.bnwise.cleanleaf.ocrbench.OcrBenchHostApi
 import com.bnwise.cleanleaf.vision.VisionHost
 import com.bnwise.cleanleaf.vision.VisionHostApi
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -28,6 +30,7 @@ class CleanleafPlugin :
         CornerFramesStreamHandler.register(messenger, camera.cornerFrames)
         VisionHostApi.setUp(messenger, VisionHost())
         OcrHostApi.setUp(messenger, OcrHost(binding.applicationContext))
+        OcrBenchHostApi.setUp(messenger, OcrBenchHost(binding.applicationContext))
         googleScanner = GoogleScannerHost(binding.applicationContext).also { GoogleScannerHostApi.setUp(messenger, it) }
     }
 
@@ -36,6 +39,7 @@ class CleanleafPlugin :
         CameraHostApi.setUp(messenger, null)
         VisionHostApi.setUp(messenger, null)
         OcrHostApi.setUp(messenger, null)
+        OcrBenchHostApi.setUp(messenger, null)
         GoogleScannerHostApi.setUp(messenger, null)
         camera = null
         googleScanner = null
