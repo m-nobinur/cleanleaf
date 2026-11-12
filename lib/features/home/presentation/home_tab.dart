@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -8,8 +9,9 @@ import '../../../core/widgets/bento_tile.dart';
 import '../../../core/widgets/round_icon_button.dart';
 import '../../library/domain/document.dart';
 import '../../library/presentation/document_card.dart';
+import '../../ocr/data/ocr_providers.dart';
 
-class HomeTab extends StatefulWidget {
+class HomeTab extends ConsumerStatefulWidget {
   const HomeTab({
     super.key,
     required this.documents,
@@ -39,10 +41,10 @@ class HomeTab extends StatefulWidget {
   final void Function(Document) onMenu;
 
   @override
-  State<HomeTab> createState() => _HomeTabState();
+  ConsumerState<HomeTab> createState() => _HomeTabState();
 }
 
-class _HomeTabState extends State<HomeTab> {
+class _HomeTabState extends ConsumerState<HomeTab> {
   static const _recentCount = 10;
   var _query = '';
 
@@ -51,11 +53,20 @@ class _HomeTabState extends State<HomeTab> {
     final theme = ShadTheme.of(context);
     final colors = theme.colorScheme;
     final documents = widget.documents ?? const <Document>[];
-    final query = _query.trim().toLowerCase();
+    final query = _query.trim();
+    // Titles and page text (D-56); title matches stand in until it answers.
+    final matches = query.isEmpty
+        ? null
+        : ref.watch(documentSearchProvider(query)).value?.map((d) => d.id);
+    final matchIds = matches?.toSet();
     final shown = query.isEmpty
         ? documents.take(_recentCount).toList()
         : documents
-              .where((d) => d.title.toLowerCase().contains(query))
+              .where(
+                (d) => matchIds != null
+                    ? matchIds.contains(d.id)
+                    : d.title.toLowerCase().contains(query.toLowerCase()),
+              )
               .toList();
     const gutter = EdgeInsets.symmetric(horizontal: Spacing.xl);
 

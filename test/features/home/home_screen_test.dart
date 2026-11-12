@@ -7,6 +7,7 @@ import 'package:cleanleaf/features/export/domain/convert_format.dart';
 import 'package:cleanleaf/features/home/presentation/home_screen.dart';
 import 'package:cleanleaf/features/library/data/library_providers.dart';
 import 'package:cleanleaf/features/library/presentation/document_card.dart';
+import 'package:cleanleaf/features/ocr/data/ocr_providers.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,6 +58,13 @@ void main() {
               'a': [fakePage('p1', 'a', 0), fakePage('p2', 'a', 1)],
               'b': [fakePage('p3', 'b', 0)],
             }),
+          ),
+          ocrRepositoryProvider.overrideWithValue(
+            FakeOcrRepository(
+              documents: documents,
+              textByDocument: {'a': 'Dhaka Electric bill ঢাকা'},
+              reading: {'b'},
+            ),
           ),
           settingsStoreProvider.overrideWithValue(
             settings ?? MemorySettingsStore(),
@@ -149,6 +157,29 @@ void main() {
       await tester.enterText(find.byType(EditableText), 'tax');
       await tester.pumpAndSettle();
       expect(find.text('No documents match "tax".'), findsOneWidget);
+    });
+
+    testWidgets('search also matches the text read from pages', (tester) async {
+      await pumpHome(tester, twoDocs());
+      await tester.enterText(find.byType(EditableText), 'ঢাকা');
+      await tester.pumpAndSettle();
+      expect(find.text('Receipts'), findsOneWidget);
+      expect(find.text('Passport'), findsNothing);
+    });
+
+    testWidgets('a document being read shows the reading chip', (tester) async {
+      await pumpHome(tester, twoDocs());
+      expect(
+        find.descendant(
+          of: find.ancestor(
+            of: find.text('Passport'),
+            matching: find.byType(DocumentCard),
+          ),
+          matching: find.text('Reading text…'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Reading text…'), findsOneWidget);
     });
 
     testWidgets('scan tile opens the mode sheet and routes with the mode', (

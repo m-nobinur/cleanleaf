@@ -32,9 +32,10 @@ final ocrRepositoryProvider = Provider<OcrRepository>(
 );
 
 /// Documents matching [query] in their title or page text (all when blank).
-final documentSearchProvider = StreamProvider.family<List<Document>, String>(
-  (ref, query) => ref.watch(ocrRepositoryProvider).watchSearch(query),
-);
+final documentSearchProvider = StreamProvider.autoDispose
+    .family<List<Document>, String>(
+      (ref, query) => ref.watch(ocrRepositoryProvider).watchSearch(query),
+    );
 
 /// Documents with a page waiting for or undergoing OCR.
 final readingDocumentIdsProvider = StreamProvider<Set<String>>(
