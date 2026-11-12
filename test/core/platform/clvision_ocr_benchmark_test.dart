@@ -12,6 +12,7 @@ import 'clvision_ocr.dart';
 
 // T-038: the bundled PP-OCR over a page set, writing T-032's scorer format:
 //   CLEANLEAF_OCR_PAGES=<dir of .jpg> CLEANLEAF_OCR_OUT=<dir> [CLEANLEAF_FP16=0]
+//   [CLEANLEAF_STOP_NON_LATIN=1] (Auto's early stop)
 //   flutter test --tags benchmark test/core/platform/clvision_ocr_benchmark_test.dart
 
 void main() {
@@ -35,7 +36,10 @@ void main() {
             ..sort((a, b) => a.path.compareTo(b.path));
       for (final file in files) {
         watch.reset();
-        final page = ocr.read(file.readAsBytesSync());
+        final page = ocr.read(
+          file.readAsBytesSync(),
+          stopIfNonLatin: env['CLEANLEAF_STOP_NON_LATIN'] == '1',
+        );
         final ms = watch.elapsedMilliseconds;
         page['native'] = page['text'];
         final id = file.uri.pathSegments.last.replaceAll('.jpg', '');

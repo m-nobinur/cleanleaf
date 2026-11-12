@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'app.dart';
 import 'core/licenses/third_party_licenses.dart';
 import 'core/platform/clvision.dart';
+import 'core/platform/ocr_api.g.dart';
 import 'core/storage/storage_providers.dart';
 import 'features/enhance/data/enhance_providers.dart';
 import 'features/export/data/export_providers.dart';
@@ -31,14 +32,17 @@ import 'features/ocr/domain/ocr_result.dart';
 // "Reading text…" chip), logs CLOCR DONE when every page is read, then writes
 // each document as searchable PDF, .docx and .txt to <external files>/export/
 // and logs CLOCR EXPORTED.
-// T-038: logs each read's engine, time and peak RSS, and the RSS once the
-// queue has released its engine.
+// T-038: logs each host read (engine, time, non-Latin verdict), each page's
+// routed read (engine, time, peak RSS) and the RSS once the queue has released
+// its engine.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   registerThirdPartyLicenses();
   final container = ProviderContainer(
     overrides: [
-      ocrEngineProvider.overrideWithValue(_LoggedOcrEngine(PigeonOcrEngine())),
+      ocrEngineProvider.overrideWithValue(
+        _LoggedOcrEngine(PigeonOcrEngine(api: _LoggedOcrHost())),
+      ),
     ],
   );
   try {
@@ -185,5 +189,29 @@ class _LoggedOcrEngine implements OcrEngine {
   Future<void> release() async {
     await _engine.release();
     debugPrint('CLOCR released rss=${ProcessInfo.currentRss >> 20} MB');
+  }
+}
+
+class _LoggedOcrHost extends OcrHostApi {
+  @override
+  Future<OcrPage?> recognize(
+    String engine,
+    String imagePath,
+    String language,
+    int maxLongSide,
+  ) async {
+    final watch = Stopwatch()..start();
+    final page = await super.recognize(
+      engine,
+      imagePath,
+      language,
+      maxLongSide,
+    );
+    debugPrint(
+      'CLOCR host ${p.basename(p.dirname(imagePath))} $language '
+      'engine=$engine ${watch.elapsedMilliseconds} ms '
+      'nonLatin=${page?.nonLatin} chars=${page?.text.length}',
+    );
+    return page;
   }
 }

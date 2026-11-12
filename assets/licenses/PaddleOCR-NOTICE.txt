@@ -1,8 +1,8 @@
 PP-OCRv6 small text detection and recognition models (PaddleOCR)
 Copyright (c) PaddlePaddle Authors. All Rights Reserved.
-Source: https://github.com/PaddlePaddle/PaddleOCR, models from
-https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det and
-https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec (ONNX releases).
+Source: https://github.com/PaddlePaddle/PaddleOCR, models from the ONNX
+releases https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det_onnx and
+https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx.
 License: Apache License 2.0 (full text below).
 Modified:
 - The recognition model's output layer is pruned to its Latin, digit and
