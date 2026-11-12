@@ -277,13 +277,7 @@ class _Reading extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           spacing: Spacing.sm,
           children: [
-            SizedBox.square(
-              dimension: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: theme.colorScheme.mutedForeground,
-              ),
-            ),
+            const SizedBox(width: 160, child: ShadProgress(minHeight: 6)),
             Text(
               total == 1
                   ? 'Reading text…'
